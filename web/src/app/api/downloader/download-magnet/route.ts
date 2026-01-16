@@ -3,8 +3,8 @@ import { addToAria2 } from "@/lib/downloader";
 
 export async function POST(req: NextRequest) {
   try {
-    const { magnet, title } = await req.json();
-    if (!magnet || !title) {
+    const { magnet, magnets, title } = await req.json();
+    if ((!magnet && !magnets) || !title) {
       return NextResponse.json(
         { error: "Brak magnetu lub tytułu" },
         { status: 400 },
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
     }
 
     const safeTitle = title.replace(/[^a-z0-9 ._-]/gi, "").trim();
-    const gids = await addToAria2([magnet], safeTitle);
+    const magnetLinks = magnets || [magnet];
+    const gids = await addToAria2(magnetLinks, safeTitle);
 
     if (!gids) {
       return NextResponse.json(

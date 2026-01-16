@@ -117,16 +117,25 @@ function injectStyles() {
       justify-content: space-between; align-items: center; gap: 15px;
     }
     .nyaa-item:hover { background: #252525; }
+    .nyaa-checkbox { width: 20px; height: 20px; cursor: pointer; }
     .nyaa-info { flex-grow: 1; }
     .nyaa-title { font-weight: bold; margin-bottom: 4px; display: block; font-size: 0.95rem; }
     .nyaa-meta { font-size: 0.8rem; color: #888; }
     .nyaa-seeders { color: #4ade80; font-weight: bold; }
+    .nyaa-footer { padding: 15px 20px; border-top: 1px solid #333; display: flex; justify-content: flex-end; gap: 10px; }
     .nyaa-btn-mini { 
       background: #ffad00; color: #000; padding: 6px 14px; 
       border-radius: 4px; font-weight: bold; cursor: pointer; text-decoration: none;
       font-size: 0.85rem; border: none; transition: 0.2s;
     }
     .nyaa-btn-mini:hover { background: #e69c00; transform: scale(1.05); }
+    .nyaa-btn-batch { 
+      background: #3db4f2; color: #fff; padding: 10px 20px; 
+      border-radius: 6px; font-weight: bold; cursor: pointer;
+      font-size: 0.95rem; border: none; transition: 0.2s;
+    }
+    .nyaa-btn-batch:hover { background: #2b9fd9; transform: translateY(-2px); }
+    .nyaa-btn-batch:disabled { background: #555; cursor: not-allowed; transform: none; }
 
     /* Styl dla przycisku na AniList */
     .nyaa-anilist-btn {
@@ -158,8 +167,9 @@ function showSelectionModal(results, animeTitle, mainBtn) {
 
   let listHtml = results
     .map(
-      (item) => `
+      (item, index) => `
     <div class="nyaa-item">
+      <input type="checkbox" class="nyaa-checkbox" data-index="${index}" data-magnet="${item.magnet}">
       <div class="nyaa-info">
         <span class="nyaa-title">${item.title}</span>
         <div class="nyaa-meta">
@@ -179,54 +189,107 @@ function showSelectionModal(results, animeTitle, mainBtn) {
   modalElement.innerHTML = `
     <div class="nyaa-modal">
       <div class="nyaa-header">
-        <h3>Wybierz wersję (Nyaa.si)</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="nyaa-select-all" class="nyaa-checkbox">
+          <h3>Wybierz wersję (Nyaa.si)</h3>
+        </div>
         <span class="nyaa-close">&times;</span>
       </div>
       <div class="nyaa-list">${listHtml}</div>
+      <div class="nyaa-footer">
+        <button id="nyaa-download-selected" class="nyaa-btn-batch" disabled>Pobierz zaznaczone (0)</button>
+      </div>
     </div>
   `;
 
   document.body.appendChild(modalElement);
 
+  const selectAll = modalElement.querySelector("#nyaa-select-all");
+  const checkboxes = modalElement.querySelectorAll(
+    ".nyaa-checkbox:not(#nyaa-select-all)",
+  );
+  const batchBtn = modalElement.querySelector("#nyaa-download-selected");
+
+  const updateBatchBtn = () => {
+    const count = modalElement.querySelectorAll(
+      ".nyaa-checkbox:checked:not(#nyaa-select-all)",
+    ).length;
+    batchBtn.innerText = `Pobierz zaznaczone (${count})`;
+    batchBtn.disabled = count === 0;
+  };
+
+  if (selectAll) {
+    selectAll.onchange = () => {
+      checkboxes.forEach((cb) => (cb.checked = selectAll.checked));
+      updateBatchBtn();
+    };
+  }
+
+  checkboxes.forEach((cb) => {
+    cb.onchange = updateBatchBtn;
+  });
+
   modalElement.querySelector(".nyaa-close").onclick = () =>
     modalElement.remove();
+
   modalElement.onclick = (e) => {
     if (e.target === modalElement) modalElement.remove();
   };
 
+  // Obsługa pojedynczego pobierania
   modalElement.querySelectorAll(".nyaa-btn-mini").forEach((btn) => {
     btn.onclick = async () => {
       const magnet = btn.getAttribute("data-magnet");
+      startDownload([magnet], animeTitle, mainBtn);
       modalElement.remove();
-
-      mainBtn.innerText = "Dodawanie...";
-      mainBtn.style.backgroundColor = "";
-
-      try {
-        const res = await fetch(`${CONFIG.BASE_URL}/download-magnet`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ magnet, title: animeTitle }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          mainBtn.innerText = "Pobieranie: 0%";
-          mainBtn.style.backgroundColor = CONFIG.SUCCESS_COLOR;
-          const gid = data.gids[data.gids.length - 1];
-          startPolling(gid, mainBtn);
-        } else {
-          throw new Error(data.error);
-        }
-      } catch (err) {
-        alert("Błąd: " + err.message);
-        mainBtn.innerText = "Błąd!";
-      }
     };
   });
+
+  // Obsługa pobierania masowego
+  batchBtn.onclick = async () => {
+    const selectedMagnets = Array.from(
+      modalElement.querySelectorAll(
+        ".nyaa-checkbox:checked:not(#nyaa-select-all)",
+      ),
+    ).map((cb) => cb.getAttribute("data-magnet"));
+
+    if (selectedMagnets.length > 0) {
+      startDownload(selectedMagnets, animeTitle, mainBtn);
+      modalElement.remove();
+    }
+  };
 }
 
-async function startPolling(gid, btn) {
-  const STATUS_URL = `${CONFIG.BASE_URL}/status/${gid}`;
+async function startDownload(magnets, animeTitle, mainBtn) {
+  mainBtn.innerText =
+    magnets.length > 1 ? "Dodawanie wielu..." : "Dodawanie...";
+  mainBtn.style.backgroundColor = "";
+
+  try {
+    const res = await fetch(`${CONFIG.BASE_URL}/download-magnet`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ magnets, title: animeTitle }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      mainBtn.innerText = "Pobieranie...";
+      mainBtn.style.backgroundColor = CONFIG.SUCCESS_COLOR;
+      startPolling(data.gids, mainBtn);
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    alert("Błąd: " + err.message);
+    mainBtn.innerText = "Błąd!";
+  }
+}
+
+async function startPolling(gids, btn) {
+  // Jeśli dostaliśmy tylko jeden GID jako string, zamień na tablicę
+  const gidList = Array.isArray(gids) ? gids : [gids];
+  const lastGid = gidList[gidList.length - 1]; // Polling robimy na ostatnim dla uproszczenia, lub średniej
+  const STATUS_URL = `${CONFIG.BASE_URL}/status/${lastGid}`;
 
   const interval = setInterval(async () => {
     try {
