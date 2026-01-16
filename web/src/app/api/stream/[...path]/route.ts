@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
+import { ARIA2_PATH } from "@/lib/downloader";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  const filePath = params.path.join("/");
+  if (!ARIA2_PATH) {
+    return NextResponse.json(
+      { error: "ARIA2_PATH not configured" },
+      { status: 500 },
+    );
+  }
+
+  const fullPath = path.join(ARIA2_PATH, filePath);
+
+  if (!fs.existsSync(fullPath)) {
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
+
+  const stat = fs.statSync(fullPath);
+  const fileSize = stat.size;
+  const range = req.headers.get("range");
+
+  const ext = path.extname(fullPath).toLowerCase();
+  const contentType = ext === ".mp4" ? "video/mp4" : "video/x-matroska";
+
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    if (start >= fileSize) {
+      return new NextResponse(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${fileSize}` },
+      });
+    }
+
+    const chunksize = end - start + 1;
+    const stream = fs.createReadStream(fullPath, { start, end });
+
+    return new NextResponse(stream as any, {
+      status: 206,
+      headers: {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize.toString(),
+        "Content-Type": contentType,
+      },
+    });
+  } else {
+    const stream = fs.createReadStream(fullPath);
+    return new NextResponse(stream as any, {
+      headers: {
+        "Content-Length": fileSize.toString(),
+        "Content-Type": contentType,
+      },
+    });
+  }
+}
