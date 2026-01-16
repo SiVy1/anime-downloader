@@ -40,6 +40,9 @@ try {
   console.error("Failed to initialize Terabox Uploader:", err.message);
 }
 
+// Zbiór GID-ów, które już zostały wysłane lub są w trakcie wysyłania
+const processedGids = new Set();
+
 // Funkcja wyszukująca na Nyaa
 async function searchNyaa(query) {
   try {
@@ -232,4 +235,83 @@ app.post("/upload-terabox", async (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Node.js Backend running on http://0.0.0.0:${PORT}`);
+  startAutoUploadMonitor();
 });
+
+// Funkcja monitorująca zakończone pobierania w Aria2
+async function startAutoUploadMonitor() {
+  console.log("Auto-upload monitor started.");
+
+  setInterval(async () => {
+    try {
+      // Pobierz listę zakończonych pobrań (maksymalnie 10 ostatnich)
+      const jsonReq = {
+        jsonrpc: "2.0",
+        id: "monitor",
+        method: "aria2.tellStopped",
+        params: [`token:${ARIA2_SECRET}`, 0, 10],
+      };
+
+      const res = await axios.post(ARIA2_URL, jsonReq);
+      if (res.data.error) return;
+
+      const stoppedDownloads = res.data.result;
+
+      for (const download of stoppedDownloads) {
+        // Jeśli pobieranie zakończone sukcesem i jeszcze go nie procesowaliśmy
+        if (
+          download.status === "complete" &&
+          !processedGids.has(download.gid)
+        ) {
+          processedGids.add(download.gid);
+
+          console.log(
+            `[MONITOR] Wykryto zakończone pobieranie: ${download.gid}`,
+          );
+
+          // Pobierz informacje o plikach
+          for (const file of download.files) {
+            const localPath = file.path.replace(/\\/g, "/");
+            // Wyciągamy nazwę folderu z ścieżki (zakładając strukturę ARIA2_PATH/FolderName/FileName)
+            const relativePath = path
+              .relative(ARIA2_PATH, localPath)
+              .replace(/\\/g, "/");
+            const remoteFolder = "/Anime/" + path.dirname(relativePath);
+
+            if (fs.existsSync(localPath)) {
+              autoUploadToTerabox(localPath, remoteFolder, download.gid);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Cichy błąd, żeby nie spamować konsoli przy problemach z połączeniem
+    }
+  }, 10000); // Sprawdzaj co 10 sekund
+}
+
+async function autoUploadToTerabox(localPath, remoteFolder, gid) {
+  if (!uploader) {
+    console.error("[AUTO-UPLOAD] Brak zainicjalizowanego Terabox Uploader!");
+    return;
+  }
+
+  try {
+    console.log(
+      `[AUTO-UPLOAD] Rozpoczynam wysyłanie: ${path.basename(localPath)} -> ${remoteFolder}`,
+    );
+    const result = await uploader.uploadFile(localPath, false, remoteFolder);
+
+    if (result.success) {
+      console.log(
+        `[AUTO-UPLOAD] Sukces! Plik wysłany na Terabox: ${path.basename(localPath)}`,
+      );
+    } else {
+      console.error(`[AUTO-UPLOAD] Błąd wysyłania: ${result.message}`);
+      // Możemy opcjonalnie usunąć z processedGids, żeby spróbował ponownie,
+      // ale lepiej uważać na pętle błędów.
+    }
+  } catch (error) {
+    console.error(`[AUTO-UPLOAD] Wyjątek podczas wysyłania: ${error.message}`);
+  }
+}
