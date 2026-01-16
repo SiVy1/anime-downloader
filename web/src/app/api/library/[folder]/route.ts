@@ -5,9 +5,9 @@ import { ARIA2_PATH } from "@/lib/downloader";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { folder: string } },
+  { params }: { params: Promise<{ folder: string }> },
 ) {
-  const { folder } = params;
+  const { folder } = await params;
   if (!ARIA2_PATH) {
     return NextResponse.json(
       { error: "ARIA2_PATH not configured" },
