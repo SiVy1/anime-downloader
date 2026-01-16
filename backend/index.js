@@ -240,7 +240,7 @@ app.listen(PORT, "0.0.0.0", () => {
 
 // Funkcja monitorująca zakończone pobierania w Aria2
 async function startAutoUploadMonitor() {
-  console.log("Auto-upload monitor started.");
+  console.log(`Auto-upload monitor started. Target base path: ${ARIA2_PATH}`);
 
   setInterval(async () => {
     try {
@@ -272,14 +272,20 @@ async function startAutoUploadMonitor() {
           // Pobierz informacje o plikach
           for (const file of download.files) {
             const localPath = file.path.replace(/\\/g, "/");
-            // Wyciągamy nazwę folderu z ścieżki (zakładając strukturę ARIA2_PATH/FolderName/FileName)
-            const relativePath = path
-              .relative(ARIA2_PATH, localPath)
-              .replace(/\\/g, "/");
-            const remoteFolder = "/Anime/" + path.dirname(relativePath);
+            console.log(`[DEBUG] Aria2 raportuje ścieżkę: ${localPath}`);
 
             if (fs.existsSync(localPath)) {
+              // Wyciągamy nazwę folderu z ścieżki
+              const relativePath = path
+                .relative(ARIA2_PATH, localPath)
+                .replace(/\\/g, "/");
+              const remoteFolder = "/Anime/" + path.dirname(relativePath);
+
               autoUploadToTerabox(localPath, remoteFolder, download.gid);
+            } else {
+              console.warn(
+                `[DEBUG] Plik NIE istnieje na dysku (brak pod podaną ścieżką): ${localPath}`,
+              );
             }
           }
         }
