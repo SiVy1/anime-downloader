@@ -344,7 +344,8 @@ async function startAutoUploadMonitor() {
                 .relative(ARIA2_PATH, localPath)
                 .replace(/\\/g, "/");
               const remoteFolder = "/Anime/" + path.dirname(relativePath);
-              autoUploadToTerabox(localPath, remoteFolder, download.gid);
+              await autoUploadToTerabox(localPath, remoteFolder, download.gid);
+              await sleep(2000); // Dodatkowe 2s przerwy między plikami
             } else {
               console.warn(
                 `[DEBUG] Plik mimo statusu complete nie istnieje: ${localPath}`,
@@ -359,45 +360,72 @@ async function startAutoUploadMonitor() {
   }, 15000); // Sprawdzaj co 15 sekund
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function autoUploadToTerabox(localPath, remoteFolder, gid) {
   if (!uploader) {
     console.error("[AUTO-UPLOAD] Brak zainicjalizowanego Terabox Uploader!");
     return;
   }
 
-  try {
-    console.log(
-      `[AUTO-UPLOAD] Rozpoczynam wysyłanie: ${path.basename(localPath)} -> ${remoteFolder}`,
-    );
-    const result = await uploader.uploadFile(localPath, false, remoteFolder);
+  const maxRetries = 3;
+  let attempt = 0;
+  let success = false;
 
-    if (result.success) {
+  while (attempt < maxRetries && !success) {
+    attempt++;
+    try {
       console.log(
-        `[AUTO-UPLOAD] Sukces! Plik wysłany na Terabox: ${path.basename(localPath)}`,
+        `[AUTO-UPLOAD] Rozpoczynam wysyłanie (Próba ${attempt}/${maxRetries}): ${path.basename(localPath)} -> ${remoteFolder}`,
       );
+      const result = await uploader.uploadFile(localPath, false, remoteFolder);
 
-      // Usuwamy plik z dysku po udanym wysłaniu
-      try {
-        fs.unlinkSync(localPath);
-        console.log(`[CLEANUP] Usunięto lokalny plik: ${localPath}`);
-
-        // Opcjonalnie: usuwamy folder, jeśli jest pusty
-        const dir = path.dirname(localPath);
-        if (fs.readdirSync(dir).length === 0) {
-          fs.rmdirSync(dir);
-          console.log(`[CLEANUP] Usunięto pusty folder: ${dir}`);
-        }
-      } catch (cleanupErr) {
-        console.error(
-          `[CLEANUP ERROR] Nie udało się usunąć: ${cleanupErr.message}`,
+      if (result.success) {
+        success = true;
+        console.log(
+          `[AUTO-UPLOAD] Sukces! Plik wysłany na Terabox: ${path.basename(localPath)}`,
         );
+
+        // Usuwamy plik z dysku po udanym wysłaniu
+        try {
+          fs.unlinkSync(localPath);
+          console.log(`[CLEANUP] Usunięto lokalny plik: ${localPath}`);
+
+          // Usuwamy folder, jeśli jest pusty
+          const dir = path.dirname(localPath);
+          if (fs.readdirSync(dir).length === 0) {
+            fs.rmdirSync(dir);
+            console.log(`[CLEANUP] Usunięto pusty folder: ${dir}`);
+          }
+        } catch (cleanupErr) {
+          console.error(
+            `[CLEANUP ERROR] Nie udało się usunąć: ${cleanupErr.message}`,
+          );
+        }
+      } else {
+        console.error(
+          `[AUTO-UPLOAD] Błąd wysyłania (Próba ${attempt}): ${result.message}`,
+        );
+        if (attempt < maxRetries) {
+          console.log(`[AUTO-UPLOAD] Czekam 5s przed ponowną próbą...`);
+          await sleep(5000);
+        }
       }
-    } else {
-      console.error(`[AUTO-UPLOAD] Błąd wysyłania: ${result.message}`);
-      // Możemy opcjonalnie usunąć z processedGids, żeby spróbował ponownie,
-      // ale lepiej uważać na pętle błędów.
+    } catch (error) {
+      console.error(
+        `[AUTO-UPLOAD] Wyjątek (Próba ${attempt}): ${error.message}`,
+      );
+      if (attempt < maxRetries) {
+        console.log(`[AUTO-UPLOAD] Czekam 5s przed ponowną próbą...`);
+        await sleep(5000);
+      }
     }
-  } catch (error) {
-    console.error(`[AUTO-UPLOAD] Wyjątek podczas wysyłania: ${error.message}`);
+  }
+
+  if (!success) {
+    console.error(
+      `[AUTO-UPLOAD] Nie udało się wysłać pliku po ${maxRetries} próbach: ${localPath}`,
+    );
+    // Opcjonalnie: możemy usunąć z processedGids, ale to ryzykowne pętlenie błędów.
   }
 }
