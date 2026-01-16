@@ -128,9 +128,13 @@ export default function WatchPage() {
                         currentFile === file ? "text-blue-400" : "text-white/80"
                       }`}
                     >
-                      Odcinek {index + 1}
+                      {file.split("/").pop()}
                     </p>
-                    <p className="text-[10px] text-white/40 truncate">{file}</p>
+                    {file.includes("/") && (
+                      <p className="text-[10px] text-white/40 truncate">
+                        .../{file.split("/").slice(0, -1).join("/")}
+                      </p>
+                    )}
                   </div>
                   <ChevronRight
                     className={`w-4 h-4 transition-transform ${

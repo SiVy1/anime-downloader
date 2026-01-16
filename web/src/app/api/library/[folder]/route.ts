@@ -21,14 +21,32 @@ export async function GET(
       return NextResponse.json({ error: "Folder not found" }, { status: 404 });
     }
 
-    const items = fs.readdirSync(fullPath, { withFileTypes: true });
-    const files = items
-      .filter((item) => item.isFile())
-      .filter((item) => {
-        const ext = path.extname(item.name).toLowerCase();
-        return [".mkv", ".mp4", ".avi", ".mov"].includes(ext);
-      })
-      .map((item) => item.name);
+    const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []) => {
+      const files = fs.readdirSync(dirPath, { withFileTypes: true });
+
+      files.forEach((file) => {
+        if (file.isDirectory()) {
+          arrayOfFiles = getAllFiles(
+            path.join(dirPath, file.name),
+            arrayOfFiles,
+          );
+        } else {
+          const ext = path.extname(file.name).toLowerCase();
+          if ([".mkv", ".mp4", ".avi", ".mov"].includes(ext)) {
+            // Zwracamy ścieżkę względną do 'fullPath' (czyli do folderu anime)
+            // Używamy slasha / nawet na Windowsie dla spójności w URL
+            const relativePath = path
+              .relative(fullPath, path.join(dirPath, file.name))
+              .replace(/\\/g, "/");
+            arrayOfFiles.push(relativePath);
+          }
+        }
+      });
+
+      return arrayOfFiles;
+    };
+
+    const files = getAllFiles(fullPath).sort();
 
     return NextResponse.json({ files });
   } catch (error: any) {
