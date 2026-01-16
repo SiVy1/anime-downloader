@@ -90,7 +90,36 @@ async function addToAria2(magnetLinks, subfolder = "") {
   }
 }
 
-// Endpoint do pobierania
+// Endpoint wyszukiwania
+app.get("/search", async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: "Brak zapytania" });
+
+  const results = await searchNyaa(q);
+  res.json({ count: results.length, data: results });
+});
+
+// Endpoint do pobierania konkretnego magnesu (wybór ręczny)
+app.post("/download-magnet", async (req, res) => {
+  const { magnet, title } = req.body;
+  if (!magnet || !title) return res.status(400).json({ error: "Brak danych" });
+
+  const safeTitle = title.replace(/[^a-z0-9 ._-]/gi, "").trim();
+  const gids = await addToAria2([magnet], safeTitle);
+
+  if (!gids) {
+    return res.status(500).json({ error: "Błąd podczas dodawania do Aria2" });
+  }
+
+  res.json({
+    status: "success",
+    message: `Dodano torrent do Aria2 (Folder: ${safeTitle})`,
+    folder: safeTitle,
+    gids: gids,
+  });
+});
+
+// Endpoint do pobierania (automatyczny wybór)
 app.post("/download", async (req, res) => {
   const { title, type } = req.body;
   console.log(`Otrzymano żądanie pobrania: ${title} (${type})`);
