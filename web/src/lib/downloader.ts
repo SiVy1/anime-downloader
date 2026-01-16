@@ -18,7 +18,26 @@ export async function searchNyaa(query: string) {
       },
       timeout: 10000,
     });
-    return response.data.data || [];
+
+    const results = response.data.data || [];
+
+    // Sortowanie: SubsPlease i Erai-raws na górę
+    return results.sort((a: any, b: any) => {
+      const priorityGroups = ["subsplease", "erai-raws"];
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+
+      const aHasPriority = priorityGroups.some((group) =>
+        aTitle.includes(`[${group}]`),
+      );
+      const bHasPriority = priorityGroups.some((group) =>
+        bTitle.includes(`[${group}]`),
+      );
+
+      if (aHasPriority && !bHasPriority) return -1;
+      if (!aHasPriority && bHasPriority) return 1;
+      return 0; // Jeśli oba mają priorytet lub oba nie mają, zostaw kolejność (według seeders z API)
+    });
   } catch (error: any) {
     console.error("Błąd podczas odpytywania Nyaa API:", error.message);
     return [];
