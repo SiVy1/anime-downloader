@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "HiAnime to Nyaa Click-Downloader",
+  "version": "1.0",
+  "description": "Pobieraj anime z Nyaa.si jednym kliknięciem z HiAnime.to",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://hianime.to/*", "http://*/*", "https://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://hianime.to/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
