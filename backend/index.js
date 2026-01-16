@@ -375,6 +375,23 @@ async function autoUploadToTerabox(localPath, remoteFolder, gid) {
       console.log(
         `[AUTO-UPLOAD] Sukces! Plik wysłany na Terabox: ${path.basename(localPath)}`,
       );
+
+      // Usuwamy plik z dysku po udanym wysłaniu
+      try {
+        fs.unlinkSync(localPath);
+        console.log(`[CLEANUP] Usunięto lokalny plik: ${localPath}`);
+
+        // Opcjonalnie: usuwamy folder, jeśli jest pusty
+        const dir = path.dirname(localPath);
+        if (fs.readdirSync(dir).length === 0) {
+          fs.rmdirSync(dir);
+          console.log(`[CLEANUP] Usunięto pusty folder: ${dir}`);
+        }
+      } catch (cleanupErr) {
+        console.error(
+          `[CLEANUP ERROR] Nie udało się usunąć: ${cleanupErr.message}`,
+        );
+      }
     } else {
       console.error(`[AUTO-UPLOAD] Błąd wysyłania: ${result.message}`);
       // Możemy opcjonalnie usunąć z processedGids, żeby spróbował ponownie,
