@@ -1,6 +1,6 @@
 // Konfiguracja API - tutaj możesz łatwo zmienić adres serwera
 const CONFIG = {
-  API_URL: "http://localhost:5000/download", // Zmień na IP swojego VPS, np. http://1.2.3.4:5000/download
+  API_URL: "https://ad.tsuki.com.pl/download", // Zmień na IP swojego VPS, np. http://1.2.3.4:5000/download
   BUTTON_TEXT: "Wyślij do pobrania (1080p)",
   BUTTON_CLASS: "btn btn-sm btn-primary ml-2", // Klasy hiAnime dla przycisków
   SUCCESS_COLOR: "#4ade80",
@@ -58,8 +58,12 @@ function init() {
       const data = await response.json();
 
       if (response.ok) {
-        downloadBtn.innerText = "Dodano do kolejki!";
+        downloadBtn.innerText = "Pobieranie: 0%";
         downloadBtn.style.backgroundColor = CONFIG.SUCCESS_COLOR;
+
+        // Pobierz ostatni GID (w przypadku batcha jest jeden główny)
+        const gid = data.gids[data.gids.length - 1];
+        startPolling(gid, downloadBtn);
       } else {
         throw new Error(data.detail || "Błąd serwera");
       }
@@ -69,16 +73,39 @@ function init() {
       downloadBtn.style.backgroundColor = CONFIG.ERROR_COLOR;
       alert(`Błąd: ${error.message}`);
     }
-
-    // Przywróć przycisk po 3 sekundach
-    setTimeout(() => {
-      downloadBtn.innerText = CONFIG.BUTTON_TEXT;
-      downloadBtn.style.backgroundColor = "";
-      downloadBtn.style.opacity = "1";
-    }, 3000);
   });
 
   buttonContainer.appendChild(downloadBtn);
+}
+
+async function startPolling(gid, btn) {
+  const STATUS_URL = CONFIG.API_URL.replace("/download", `/status/${gid}`);
+
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(STATUS_URL);
+      const data = await res.json();
+
+      if (data.status === "complete") {
+        btn.innerText = "Gotowe! (100%)";
+        btn.style.backgroundColor = "#22c55e";
+        clearInterval(interval);
+        setTimeout(() => {
+          btn.innerText = CONFIG.BUTTON_TEXT;
+          btn.style.backgroundColor = "";
+        }, 5000);
+      } else if (data.status === "error") {
+        btn.innerText = "Błąd pobierania!";
+        btn.style.backgroundColor = CONFIG.ERROR_COLOR;
+        clearInterval(interval);
+      } else {
+        btn.innerText = `${data.progress}% | ${data.speed} MB/s`;
+      }
+    } catch (error) {
+      console.error("Polling error:", error);
+      clearInterval(interval);
+    }
+  }, 2000); // Odświeżaj co 2 sekundy
 }
 
 // Obserwator do dynamicznie ładowanych stron (HiAnime często przeładowuje content bez odświeżania strony)

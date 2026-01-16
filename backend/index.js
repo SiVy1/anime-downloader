@@ -56,6 +56,7 @@ async function searchNyaa(query) {
 // Funkcja dodająca do Aria2
 async function addToAria2(magnetLinks, subfolder = "") {
   const targetDir = path.join(ARIA2_PATH, subfolder).replace(/\\/g, "/");
+  const gids = [];
 
   try {
     for (const magnet of magnetLinks) {
@@ -68,14 +69,15 @@ async function addToAria2(magnetLinks, subfolder = "") {
       const res = await axios.post(ARIA2_URL, jsonReq);
       if (res.data.error) {
         console.error("Błąd Aria2:", res.data.error.message);
-        return false;
+        return null;
       }
+      gids.push(res.data.result);
       console.log(`Dodano magnet do Aria2 (GID: ${res.data.result})`);
     }
-    return true;
+    return gids;
   } catch (error) {
     console.error("Błąd podczas połączenia z Aria2:", error.message);
-    return false;
+    return null;
   }
 }
 
@@ -149,9 +151,9 @@ app.post("/download", async (req, res) => {
   }
 
   const safeTitle = title.replace(/[^a-z0-9 ._-]/gi, "").trim();
-  const success = await addToAria2(magnetsToAdd, safeTitle);
+  const gids = await addToAria2(magnetsToAdd, safeTitle);
 
-  if (!success) {
+  if (!gids) {
     return res.status(500).json({ detail: "Błąd podczas dodawania do Aria2" });
   }
 
@@ -159,7 +161,42 @@ app.post("/download", async (req, res) => {
     status: "success",
     message: `Dodano ${magnetsToAdd.length} torrentów do Aria2 (Folder: ${safeTitle})`,
     folder: safeTitle,
+    gids: gids,
   });
+});
+
+// Endpoint do sprawdzania statusu
+app.get("/status/:gid", async (req, res) => {
+  const { gid } = req.params;
+  try {
+    const jsonReq = {
+      jsonrpc: "2.0",
+      id: "status",
+      method: "aria2.tellStatus",
+      params: [`token:${ARIA2_SECRET}`, gid],
+    };
+    const response = await axios.post(ARIA2_URL, jsonReq);
+    if (response.data.error) {
+      return res.status(404).json({ error: response.data.error.message });
+    }
+
+    const s = response.data.result;
+    const progress =
+      s.totalLength > 0
+        ? ((s.completedLength / s.totalLength) * 100).toFixed(1)
+        : 0;
+    const downloadSpeed = (s.downloadSpeed / 1024 / 1024).toFixed(2); // MB/s
+
+    res.json({
+      status: s.status, // active, waiting, paused, error, complete
+      progress: progress,
+      speed: downloadSpeed,
+      total: (s.totalLength / 1024 / 1024).toFixed(2),
+      completed: (s.completedLength / 1024 / 1024).toFixed(2),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Opcjonalny endpoint do uploadu na Terabox (wywoływany po zakończeniu pobierania)
