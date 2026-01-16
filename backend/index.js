@@ -272,10 +272,32 @@ async function startAutoUploadMonitor() {
           // Pobierz informacje o plikach
           for (const file of download.files) {
             const localPath = file.path.replace(/\\/g, "/");
-            console.log(`[DEBUG] Aria2 raportuje ścieżkę: ${localPath}`);
+            const fileName = path.basename(localPath);
+
+            // Ignorujemy metadane magnetów oraz pliki kontrolne arii
+            if (
+              fileName.includes("[METADATA]") ||
+              fileName.endsWith(".aria2")
+            ) {
+              console.log(
+                `[DEBUG] Pomijam plik systemowy/metadane: ${fileName}`,
+              );
+              continue;
+            }
+
+            // Sprawdzamy czy to plik wideo
+            const isVideo = [".mkv", ".mp4", ".avi", ".mov"].some((ext) =>
+              localPath.toLowerCase().endsWith(ext),
+            );
+            if (!isVideo) {
+              console.log(`[DEBUG] Pomijam plik (nie-wideo): ${fileName}`);
+              continue;
+            }
+
+            console.log(`[DEBUG] Sprawdzam plik wideo: ${localPath}`);
 
             if (fs.existsSync(localPath)) {
-              // Wyciągamy nazwę folderu z ścieżki
+              // Obliczamy ścieżkę zdalną
               const relativePath = path
                 .relative(ARIA2_PATH, localPath)
                 .replace(/\\/g, "/");
@@ -284,7 +306,7 @@ async function startAutoUploadMonitor() {
               autoUploadToTerabox(localPath, remoteFolder, download.gid);
             } else {
               console.warn(
-                `[DEBUG] Plik NIE istnieje na dysku (brak pod podaną ścieżką): ${localPath}`,
+                `[DEBUG] Plik wideo NIE istnieje fizycznie: ${localPath}`,
               );
             }
           }
