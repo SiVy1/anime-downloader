@@ -7,7 +7,7 @@ import ffmpeg from "fluent-ffmpeg";
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
-) {
+): Promise<NextResponse> {
   const { path: pathSegments } = await params;
   const filePath = pathSegments.join("/");
 
@@ -24,7 +24,7 @@ export async function GET(
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     ffmpeg.ffprobe(fullPath, (err, metadata) => {
       if (err) {
         console.error("FFprobe error:", err);
