@@ -244,78 +244,91 @@ async function startAutoUploadMonitor() {
 
   setInterval(async () => {
     try {
-      // Pobierz listę zakończonych pobrań (maksymalnie 10 ostatnich)
-      const jsonReq = {
-        jsonrpc: "2.0",
-        id: "monitor",
-        method: "aria2.tellStopped",
-        params: [`token:${ARIA2_SECRET}`, 0, 10],
-      };
+      const [activeRes, stoppedRes] = await Promise.all([
+        axios.post(ARIA2_URL, {
+          jsonrpc: "2.0",
+          id: "a",
+          method: "aria2.tellActive",
+          params: [`token:${ARIA2_SECRET}`],
+        }),
+        axios.post(ARIA2_URL, {
+          jsonrpc: "2.0",
+          id: "s",
+          method: "aria2.tellStopped",
+          params: [`token:${ARIA2_SECRET}`, 0, 50],
+        }),
+      ]);
 
-      const res = await axios.post(ARIA2_URL, jsonReq);
-      if (res.data.error) return;
+      const allDownloads = [
+        ...(activeRes.data.result || []),
+        ...(stoppedRes.data.result || []),
+      ];
 
-      const stoppedDownloads = res.data.result;
+      for (const download of allDownloads) {
+        if (processedGids.has(download.gid)) continue;
 
-      for (const download of stoppedDownloads) {
-        // Jeśli pobieranie zakończone sukcesem i jeszcze go nie procesowaliśmy
-        if (
-          download.status === "complete" &&
-          !processedGids.has(download.gid)
-        ) {
-          processedGids.add(download.gid);
+        // Zadanie jest gotowe do uploadu, jeśli status to complete LUB pobrano 100% danych (np. przy seedingu)
+        const isFinished =
+          download.status === "complete" ||
+          (download.totalLength > 0 &&
+            download.completedLength === download.totalLength);
+
+        if (isFinished) {
+          console.log(
+            `[MONITOR] Znaleziono gotowe zadanie: ${download.gid} (Status: ${download.status})`,
+          );
+          const downloadDir = download.dir.replace(/\\/g, "/");
+
+          // Sprawdzamy czy to nie są tylko metadane
+          const videoFiles = download.files.filter((f) => {
+            const name = path.basename(f.path);
+            return (
+              !name.includes("[METADATA]") &&
+              !name.endsWith(".aria2") &&
+              [".mkv", ".mp4", ".avi", ".mp3", ".flac"].some((ext) =>
+                f.path.toLowerCase().endsWith(ext),
+              )
+            );
+          });
+
+          if (videoFiles.length === 0) {
+            console.log(
+              `[MONITOR] Zadanie ${download.gid} to metadane/system. Ignoruję.`,
+            );
+            processedGids.add(download.gid);
+            continue;
+          }
 
           console.log(
-            `[MONITOR] Wykryto zakończone pobieranie: ${download.gid}`,
+            `[MONITOR] Wykryto ukończone wideo: ${download.gid}. Przygotowuję upload.`,
           );
+          processedGids.add(download.gid);
 
-          // Pobierz informacje o plikach
-          for (const file of download.files) {
-            const localPath = file.path.replace(/\\/g, "/");
-            const fileName = path.basename(localPath);
-
-            // Ignorujemy metadane magnetów oraz pliki kontrolne arii
-            if (
-              fileName.includes("[METADATA]") ||
-              fileName.endsWith(".aria2")
-            ) {
-              console.log(
-                `[DEBUG] Pomijam plik systemowy/metadane: ${fileName}`,
-              );
-              continue;
+          for (const file of videoFiles) {
+            let localPath = file.path.replace(/\\/g, "/");
+            // Jeśli ścieżka nie jest absolutna, połącz ją z folderem pobierania Arii
+            if (!path.isAbsolute(localPath)) {
+              localPath = path.join(downloadDir, localPath).replace(/\\/g, "/");
             }
-
-            // Sprawdzamy czy to plik wideo
-            const isVideo = [".mkv", ".mp4", ".avi", ".mov"].some((ext) =>
-              localPath.toLowerCase().endsWith(ext),
-            );
-            if (!isVideo) {
-              console.log(`[DEBUG] Pomijam plik (nie-wideo): ${fileName}`);
-              continue;
-            }
-
-            console.log(`[DEBUG] Sprawdzam plik wideo: ${localPath}`);
 
             if (fs.existsSync(localPath)) {
-              // Obliczamy ścieżkę zdalną
               const relativePath = path
                 .relative(ARIA2_PATH, localPath)
                 .replace(/\\/g, "/");
               const remoteFolder = "/Anime/" + path.dirname(relativePath);
-
               autoUploadToTerabox(localPath, remoteFolder, download.gid);
             } else {
               console.warn(
-                `[DEBUG] Plik wideo NIE istnieje fizycznie: ${localPath}`,
+                `[DEBUG] Plik mimo statusu complete nie istnieje: ${localPath}`,
               );
             }
           }
         }
       }
     } catch (err) {
-      // Cichy błąd, żeby nie spamować konsoli przy problemach z połączeniem
+      // Cichy błąd dla połączenia
     }
-  }, 10000); // Sprawdzaj co 10 sekund
+  }, 15000); // Sprawdzaj co 15 sekund
 }
 
 async function autoUploadToTerabox(localPath, remoteFolder, gid) {
