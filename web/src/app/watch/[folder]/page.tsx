@@ -35,6 +35,7 @@ export default function WatchPage() {
 
   // Subtitles state
   const [subtitles, setSubtitles] = useState<any[]>([]);
+  const [internalSubs, setInternalSubs] = useState<any[]>([]);
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [isSearchingSubs, setIsSearchingSubs] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
@@ -56,6 +57,23 @@ export default function WatchPage() {
         setLoading(false);
       });
   }, [folder]);
+
+  // Pobieranie wewnętrznych napisów gdy zmieni się plik
+  useEffect(() => {
+    if (currentFile) {
+      setInternalSubs([]);
+      fetch(
+        `/api/subtitles/metadata/${folder}/${encodeURIComponent(currentFile)}`,
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.subtitles) {
+            setInternalSubs(data.subtitles);
+          }
+        })
+        .catch((err) => console.error("Metadata fetch error:", err));
+    }
+  }, [currentFile, folder]);
 
   const streamUrl = currentFile
     ? `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
@@ -94,7 +112,7 @@ export default function WatchPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 overflow-hidden flex flex-col">
-      {/* Premium Top Navigation */}
+      {/* Premium Top Navigation ... */}
       <div className="bg-[#0a0a0a]/40 backdrop-blur-xl border-b border-white/5 px-6 py-3 flex items-center justify-between z-50">
         <div className="flex items-center gap-4">
           <Link
@@ -146,20 +164,31 @@ export default function WatchPage() {
                 className="w-full h-full"
               >
                 <MediaProvider>
+                  {/* Napisy zewnętrzne (OpenSubtitles) */}
                   {activeSub && (
                     <Track
+                      key={activeSub}
                       src={activeSub}
-                      label="Pobrane napisy"
+                      label="Napisy Online"
                       kind="subtitles"
+                      type="vtt"
                       lang="pl"
                       default
                     />
                   )}
+                  {/* Napisy wewnętrzne (z pliku MKV) */}
+                  {internalSubs.map((sub) => (
+                    <Track
+                      key={`${currentFile}-${sub.localIndex}`}
+                      src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
+                      label={`${sub.title} [${sub.language}]`}
+                      kind="subtitles"
+                      type="vtt"
+                      lang={sub.language}
+                    />
+                  ))}
                 </MediaProvider>
-                <DefaultVideoLayout
-                  icons={defaultLayoutIcons}
-                  // Konfiguracja layoutu premium
-                />
+                <DefaultVideoLayout icons={defaultLayoutIcons} />
               </MediaPlayer>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-white/5 to-transparent">
