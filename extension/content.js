@@ -2,40 +2,69 @@
 const CONFIG = {
   BASE_URL: "https://ad.tsuki.com.pl", // Zmień na IP swojego VPS, np. http://1.2.3.4:3004
   BUTTON_TEXT: "Szukaj Torrenta (Nyaa)",
-  BUTTON_CLASS: "btn btn-sm btn-primary ml-2",
+  BUTTON_CLASS_HIANIME: "btn btn-sm btn-primary ml-2",
+  BUTTON_CLASS_ANILIST: "nyaa-anilist-btn", // Custom class for AniList
   SUCCESS_COLOR: "#4ade80",
   ERROR_COLOR: "#f87171",
+};
+
+const SITE_CONFIG = {
+  "hianime.to": {
+    container: ".film-buttons",
+    title: ".film-name.dynamic-name",
+    titleAttr: "data-jname",
+    buttonClass: CONFIG.BUTTON_CLASS_HIANIME,
+    insertMethod: "appendChild",
+  },
+  "anilist.co": {
+    container: ".header .actions",
+    title: ".header .content h1",
+    buttonClass: CONFIG.BUTTON_CLASS_ANILIST,
+    insertMethod: "appendChild",
+  },
 };
 
 let modalElement = null;
 
 function init() {
-  const buttonContainer = document.querySelector(".film-buttons");
+  const hostname = window.location.hostname.replace("www.", "");
+  const site = SITE_CONFIG[hostname];
+  if (!site) return;
+
+  const buttonContainer = document.querySelector(site.container);
   if (!buttonContainer) return;
 
   if (document.getElementById("nyaa-downloader-btn")) return;
 
   const downloadBtn = document.createElement("a");
   downloadBtn.id = "nyaa-downloader-btn";
-  downloadBtn.className = CONFIG.BUTTON_CLASS;
+  downloadBtn.className = site.buttonClass;
   downloadBtn.innerText = CONFIG.BUTTON_TEXT;
   downloadBtn.style.cursor = "pointer";
-  downloadBtn.style.marginLeft = "10px";
+
+  if (hostname === "hianime.to") {
+    downloadBtn.style.marginLeft = "10px";
+  }
 
   downloadBtn.addEventListener("click", async (e) => {
     e.preventDefault();
 
-    const animeName =
-      document
-        .querySelector(".film-name.dynamic-name")
-        ?.getAttribute("data-jname") ||
-      document.querySelector(".film-name.dynamic-name")?.innerText;
+    let animeName = "";
+    const titleEl = document.querySelector(site.title);
+    if (titleEl) {
+      if (site.titleAttr) {
+        animeName = titleEl.getAttribute(site.titleAttr) || titleEl.innerText;
+      } else {
+        animeName = titleEl.innerText;
+      }
+    }
 
-    if (!animeName) {
+    if (!animeName || animeName.trim() === "") {
       alert("Nie udało się znaleźć nazwy anime!");
       return;
     }
 
+    animeName = animeName.trim();
     downloadBtn.innerText = "Wyszukiwanie...";
     downloadBtn.style.opacity = "0.7";
 
@@ -60,7 +89,7 @@ function init() {
     }
   });
 
-  buttonContainer.appendChild(downloadBtn);
+  buttonContainer[site.insertMethod](downloadBtn);
   injectStyles();
 }
 
@@ -98,6 +127,25 @@ function injectStyles() {
       font-size: 0.85rem; border: none; transition: 0.2s;
     }
     .nyaa-btn-mini:hover { background: #e69c00; transform: scale(1.05); }
+
+    /* Styl dla przycisku na AniList */
+    .nyaa-anilist-btn {
+      background: #3db4f2;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 10px;
+      transition: 0.2s;
+    }
+    .nyaa-anilist-btn:hover {
+      background: #2b9fd9;
+      transform: translateY(-2px);
+    }
   `;
   document.head.appendChild(style);
 }

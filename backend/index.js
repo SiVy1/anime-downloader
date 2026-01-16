@@ -9,7 +9,20 @@ const TeraboxUploader = require("terabox-upload-tool");
 const app = express();
 const PORT = process.env.PORT || 3004;
 
-app.use(cors());
+const allowedOrigins = ["https://hianime.to", "https://anilist.co"];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        return callback(new Error("CORS policy violation"), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Konfiguracja Aria2

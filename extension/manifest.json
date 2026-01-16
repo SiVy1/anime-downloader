@@ -7,7 +7,7 @@
   "host_permissions": ["https://hianime.to/*", "http://*/*", "https://*/*"],
   "content_scripts": [
     {
-      "matches": ["https://hianime.to/*"],
+      "matches": ["https://hianime.to/*", "https://anilist.co/*"],
       "js": ["content.js"]
     }
   ]
