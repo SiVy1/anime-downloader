@@ -3,6 +3,7 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 const TeraboxUploader = require("terabox-upload-tool");
 
 const app = express();
@@ -14,8 +15,13 @@ app.use(express.json());
 // Konfiguracja Aria2
 const ARIA2_URL = process.env.ARIA2_URL || "http://localhost:6800/jsonrpc";
 const ARIA2_SECRET = process.env.ARIA2_SECRET || "TWOJE_HASLO";
-const ARIA2_PATH = process.env.ARIA2_PATH || "C:/Anime";
+const ARIA2_PATH = process.env.ARIA2_PATH || path.resolve(__dirname, "anime");
 const NYAA_API = "https://nyaaapi.onrender.com/nyaa";
+
+// Upewnij się, że folder pobierania istnieje
+if (!fs.existsSync(ARIA2_PATH)) {
+  fs.mkdirSync(ARIA2_PATH, { recursive: true });
+}
 
 // Konfiguracja Terabox
 const credentials = {
