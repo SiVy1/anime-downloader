@@ -1,6 +1,6 @@
 // Konfiguracja API
 const CONFIG = {
-  BASE_URL: "https://ad.tsuki.com.pl/api/downloader", // Zmieniono na ścieżkę Next.js API
+  BASE_URL: "http://100.67.98.49:3002/api/downloader", // Zmieniono na ścieżkę Next.js API
   BUTTON_TEXT: "Szukaj Torrenta (Nyaa)",
   BUTTON_CLASS_HIANIME: "btn btn-sm btn-primary ml-2",
   BUTTON_CLASS_ANILIST: "nyaa-anilist-btn", // Custom class for AniList
