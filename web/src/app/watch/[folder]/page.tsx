@@ -155,6 +155,7 @@ export default function WatchPage() {
     video?: string;
     audio?: string;
   } | null>(null);
+  const [subsLoadId, setSubsLoadId] = useState(0); // Counter to force MediaPlayer remount after subs load
 
   useEffect(() => {
     if (currentFile) {
@@ -170,6 +171,7 @@ export default function WatchPage() {
         .then((data) => {
           if (data.subtitles) {
             setInternalSubs(data.subtitles);
+            setSubsLoadId((prev) => prev + 1); // Force MediaPlayer remount
           }
           if (data.codecs) {
             setCodecInfo(data.codecs);
@@ -544,7 +546,7 @@ export default function WatchPage() {
           <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto">
             {currentFile ? (
               <MediaPlayer
-                key={currentFile}
+                key={`${currentFile}-${subsLoadId}`}
                 ref={player}
                 title={currentFile}
                 src={streamUrl}
