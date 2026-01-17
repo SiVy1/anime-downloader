@@ -127,16 +127,24 @@ export class PolishSubtitleService {
 
       // Check if episode matches if we have a target episode
       if (targetEpisode) {
-        // Look for epXX or episode XX or just the number in title or comment
-        // Using a more robust regex that avoids partial matches (like 1 matching 10)
-        const epRegex = new RegExp(
-          `(\\b|\\s|_|\\-|ep|episode)${targetEpisode}(\\b|\\s|_|\\-|\\.|$)`,
-          "i",
-        );
+        const targetEpInt = parseInt(targetEpisode, 10);
 
-        if (!epRegex.test(originalTitle) && !epRegex.test(commentText)) {
-          // If we're looking for a specific episode and it's not mentioned, skip it entirely
-          // This prevents Episode 1 from showing up for all other episodes
+        // Find all numbers in title and comments to see if any match our target episode
+        // Normalizing to integers handles "01" vs "1" automatically
+        const findNumbers = (text: string): number[] => {
+          const matches = text.match(/\d+/g) || [];
+          return matches.map((n) => parseInt(n, 10));
+        };
+
+        const allNumbers = [
+          ...findNumbers(originalTitle),
+          ...findNumbers(commentText),
+        ];
+
+        if (!allNumbers.includes(targetEpInt)) {
+          console.log(
+            `[PolishSubtitleService] Skipping mismatch: "${originalTitle}" (Target: ${targetEpInt}, Found: ${allNumbers.join(", ")})`,
+          );
           continue;
         }
       }

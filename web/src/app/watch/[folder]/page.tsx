@@ -607,7 +607,7 @@ export default function WatchPage() {
                   {internalSubs.map((sub, idx) => (
                     <Track
                       key={`${currentFile}-${sub.localIndex}`}
-                      src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
+                      src={`/api/subtitles/extract/${sub.localIndex}/${encodeURIComponent(folder as string)}/${encodeURIComponent(currentFile)}?v=${Date.now()}`}
                       label={`${sub.title} [${sub.language}]`}
                       kind="subtitles"
                       type="vtt"

@@ -27,6 +27,8 @@ export async function GET(
 
   const passThrough = new PassThrough();
 
+  console.log(`[SUBTITLE EXTRACT] Extracting track ${index} from: ${fullPath}`);
+
   // FFmpeg extraction to VTT
   // index tutaj to numer ścieżki napisów (0, 1, 2...)
   const command = ffmpeg(fullPath)
@@ -53,7 +55,7 @@ export async function GET(
   return new NextResponse(webStream as any, {
     headers: {
       "Content-Type": "text/vtt",
-      "Cache-Control": "max-age=3600",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
     },
   });
 }
