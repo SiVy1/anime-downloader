@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import { ARIA2_PATH } from "@/lib/downloader";
+import { autoConverter } from "@/lib/autoConverter";
 
 export async function GET() {
+  // Start background auto-converter if not already running
+  autoConverter.start();
   if (!ARIA2_PATH) {
     return NextResponse.json(
       { error: "ARIA2_PATH not configured" },
