@@ -107,7 +107,7 @@ export default function WatchPage() {
             epNum={episodes
               .find((e) => e.localPath === currentFile)
               ?.number?.toString()}
-            folder={folder as string}
+            folder={decodedFolder}
             onTimeUpdate={handleTimeUpdate}
             onDurationChange={handleDurationChange}
           />

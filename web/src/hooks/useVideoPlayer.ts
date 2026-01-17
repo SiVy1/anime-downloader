@@ -160,8 +160,8 @@ export function useVideoPlayer(folder: string) {
   const streamType = canDirectPlay ? "direct" : "transcode";
   const streamUrl = currentFile
     ? canDirectPlay
-      ? `/api/stream-direct/${encodeURIComponent(currentFile)}`
-      : `/api/stream/${encodeURIComponent(currentFile)}`
+      ? `/api/stream-direct/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile)}`
+      : `/api/stream/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile)}`
     : "";
 
   const searchSubtitles = async () => {
