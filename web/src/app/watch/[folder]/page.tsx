@@ -143,10 +143,18 @@ export default function WatchPage() {
     fetchMetadata();
   }, [folder, decodedFolder]);
 
-  // Pobieranie wewnętrznych napisów gdy zmieni się plik
+  // Pobieranie wewnętrznych napisów i kodeków gdy zmieni się plik
+  const [codecInfo, setCodecInfo] = useState<{
+    canDirectPlay: boolean;
+    recommendedStream: "direct" | "transcode";
+    video?: string;
+    audio?: string;
+  } | null>(null);
+
   useEffect(() => {
     if (currentFile) {
       setInternalSubs([]);
+      setCodecInfo(null);
       fetch(
         `/api/subtitles/metadata/${folder}/${encodeURIComponent(currentFile)}`,
       )
@@ -154,6 +162,10 @@ export default function WatchPage() {
         .then((data) => {
           if (data.subtitles) {
             setInternalSubs(data.subtitles);
+          }
+          if (data.codecs) {
+            setCodecInfo(data.codecs);
+            console.log("[Smart Stream] Codec info:", data.codecs);
           }
         })
         .catch((err) => console.error("Metadata fetch error:", err));
@@ -164,11 +176,22 @@ export default function WatchPage() {
     ? downloadingFiles.some((df) => df.endsWith(currentFile))
     : false;
 
+  // Smart stream URL selection
+  // Priority: Live mode > Direct play (if supported) > Transcode
   const streamUrl = currentFile
     ? isLiveMode
       ? `/api/stream-live/${folder}/${encodeURIComponent(currentFile)}`
-      : `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
+      : codecInfo?.canDirectPlay
+        ? `/api/stream-direct/${folder}/${encodeURIComponent(currentFile)}`
+        : `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
     : "";
+
+  // Determine stream type for UI
+  const streamType: "live" | "direct" | "transcode" = isLiveMode
+    ? "live"
+    : codecInfo?.canDirectPlay
+      ? "direct"
+      : "transcode";
 
   const searchSubtitles = async () => {
     if (!currentFile) return;
@@ -400,10 +423,20 @@ export default function WatchPage() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span
-                className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-red-500 animate-pulse" : "bg-blue-500"}`}
+                className={`w-2 h-2 rounded-full ${
+                  streamType === "live"
+                    ? "bg-red-500 animate-pulse"
+                    : streamType === "direct"
+                      ? "bg-green-500"
+                      : "bg-blue-500"
+                }`}
               />
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">
-                {isLiveMode ? "Live Transcoding Active" : "Sequential Stream"}
+                {streamType === "live"
+                  ? "Live Transcoding"
+                  : streamType === "direct"
+                    ? `Direct Play (${codecInfo?.video?.toUpperCase() || ""})`
+                    : "Transcoding"}
               </span>
             </div>
             <h1 className="text-sm font-bold line-clamp-1 max-w-[400px] text-white/90">
