@@ -28,7 +28,6 @@ export function useVideoPlayer(folder: string) {
 
   // Live Stream state
   const [downloadingFiles, setDownloadingFiles] = useState<string[]>([]);
-  const [isLiveMode, setIsLiveMode] = useState(false);
 
   // Torrent Search state
   const [searchingEp, setSearchingEp] = useState<any | null>(null);
@@ -149,17 +148,11 @@ export function useVideoPlayer(folder: string) {
     setActiveSkip(skip || null);
   };
 
-  const streamType = isLiveMode
-    ? "live"
-    : codecInfo?.canDirectPlay
-      ? "direct"
-      : "transcode";
+  const streamType = codecInfo?.canDirectPlay ? "direct" : "transcode";
   const streamUrl = currentFile
-    ? isLiveMode
-      ? `/api/stream-live/${folder}/${encodeURIComponent(currentFile)}`
-      : codecInfo?.canDirectPlay
-        ? `/api/stream-direct/${folder}/${encodeURIComponent(currentFile)}`
-        : `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
+    ? codecInfo?.canDirectPlay
+      ? `/api/stream-direct/${folder}/${encodeURIComponent(currentFile)}`
+      : `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
     : "";
 
   const searchSubtitles = async () => {
@@ -264,19 +257,16 @@ export function useVideoPlayer(folder: string) {
     }
   };
 
-  const startInstantStream = async (magnet: string, hash: string) => {
+  const startDownload = async (magnet: string, hash: string) => {
     setDownloadingHash(hash);
     try {
-      const res = await fetch("/api/downloader/download-magnet", {
+      await fetch("/api/downloader/download-magnet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ magnet, subfolder: decodedFolder }),
       });
-      if (res.ok) {
-        setSearchingEp(null);
-        setIsLiveMode(true);
-        window.location.reload();
-      }
+      setSearchingEp(null);
+      // We don't reload here as we'll wait for qBit to pick it up and refresh library normally
     } catch (err) {
       console.error(err);
     } finally {
@@ -304,8 +294,6 @@ export function useVideoPlayer(folder: string) {
     convertProgress,
     isConverted,
     downloadingFiles,
-    isLiveMode,
-    setIsLiveMode,
     searchingEp,
     setSearchingEp,
     torrentResults,
@@ -324,6 +312,6 @@ export function useVideoPlayer(folder: string) {
     toggleWatched,
     startConversion,
     searchTorrentsForEpisode,
-    startInstantStream,
+    startDownload,
   };
 }

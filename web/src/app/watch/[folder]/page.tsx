@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, MonitorPlay, Subtitles } from "lucide-react";
+import { ArrowLeft, Subtitles } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
@@ -32,8 +32,6 @@ export default function WatchPage() {
     convertProgress,
     isConverted,
     downloadingFiles,
-    isLiveMode,
-    setIsLiveMode,
     searchingEp,
     setSearchingEp,
     torrentResults,
@@ -51,7 +49,7 @@ export default function WatchPage() {
     toggleWatched,
     startConversion,
     searchTorrentsForEpisode,
-    startInstantStream,
+    startDownload,
   } = useVideoPlayer(folder as string);
 
   return (
@@ -68,14 +66,12 @@ export default function WatchPage() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span
-                className={`w-2 h-2 rounded-full ${streamType === "live" ? "bg-red-500 animate-pulse" : streamType === "direct" ? "bg-green-500" : "bg-blue-500"}`}
+                className={`w-2 h-2 rounded-full ${streamType === "direct" ? "bg-green-500" : "bg-blue-500"}`}
               />
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">
-                {streamType === "live"
-                  ? "Live Transcoding"
-                  : streamType === "direct"
-                    ? `Direct Play (${codecInfo?.video?.toUpperCase() || ""})`
-                    : "Transcoding"}
+                {streamType === "direct"
+                  ? `Direct Play (${codecInfo?.video?.toUpperCase() || ""})`
+                  : "Transcoding"}
               </span>
             </div>
             <h1 className="text-sm font-bold line-clamp-1 max-w-[400px] text-white/90">
@@ -85,16 +81,6 @@ export default function WatchPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {currentFile &&
-            downloadingFiles.some((df) => df.endsWith(currentFile)) && (
-              <button
-                onClick={() => setIsLiveMode(!isLiveMode)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-medium ${isLiveMode ? "bg-red-600/30 border-red-500/50 text-red-400" : "bg-blue-600/20 border-blue-500/50 text-blue-400"}`}
-              >
-                <MonitorPlay className="w-4 h-4" />
-                {isLiveMode ? "Disable Live Mode" : "Enable Live Mode"}
-              </button>
-            )}
           <button
             onClick={searchSubtitles}
             className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-blue-600/20 rounded-xl border border-white/5 transition-all text-sm font-medium"
@@ -148,9 +134,8 @@ export default function WatchPage() {
         <PlaylistSidebar
           episodes={episodes}
           currentFile={currentFile}
-          onSelect={(file, isDownloading) => {
+          onSelect={(file) => {
             setCurrentFile(file);
-            setIsLiveMode(isDownloading);
           }}
           onDownload={searchTorrentsForEpisode}
           downloadingFiles={downloadingFiles}
@@ -174,7 +159,7 @@ export default function WatchPage() {
           results={torrentResults}
           isSearching={isSearchingTorrents}
           downloadingHash={downloadingHash}
-          onDownload={startInstantStream}
+          onDownload={startDownload}
           onClose={() => setSearchingEp(null)}
         />
       )}

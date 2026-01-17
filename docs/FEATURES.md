@@ -12,7 +12,6 @@
 
 - **Group Prioritization**: Automatically prioritizes high-quality releases from groups like **SubsPlease** and **Erai-raws**.
 - **Instant Magnet Integration**: Magnet links are pushed directly to qBittorrent with organized subfolders.
-- **Live Streaming**: Start watching while the torrent is still downloading. The player supports buffering from qBittorrent's temporary storage.
 
 ## 🎥 Premium Playback Experience
 
