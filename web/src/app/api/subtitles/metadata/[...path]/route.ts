@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const { path: pathSegments } = await params;
-  const filePath = pathSegments.join("/");
+  const filePath = pathSegments.map((p) => decodeURIComponent(p)).join("/");
 
   if (!ARIA2_PATH) {
     return NextResponse.json(

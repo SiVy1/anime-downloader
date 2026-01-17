@@ -80,7 +80,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {malId && epNum && (
               <Track
                 key={`chapters-${malId}-${epNum}`}
-                src={`/api/anime/skip-times/${malId}/${epNum}/chapters.vtt?episodeLength=${Math.floor(playerRef.current?.state?.duration || 0)}`}
+                src={`/api/anime/skip-times/${malId}/${epNum}/chapters.vtt?episodeLength=${
+                  Number.isFinite(playerRef.current?.state?.duration)
+                    ? Math.floor(playerRef.current?.state?.duration)
+                    : 0
+                }`}
                 kind="chapters"
                 default
               />
