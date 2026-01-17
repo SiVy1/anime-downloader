@@ -7,21 +7,44 @@ export const ARIA2_PATH = process.env.ARIA2_PATH || "";
 
 const NYAA_API = "https://nyaaapi.onrender.com/nyaa";
 
-export async function searchNyaa(query: string) {
+export async function searchNyaa(
+  query: string,
+  sortBy: string = "seeders",
+  order: string = "desc",
+) {
   try {
     const response = await axios.get(NYAA_API, {
       params: {
         q: `${query} 1080p`,
         category: "anime",
         sub_category: "eng",
-        sort: "seeders",
+        sort: sortBy,
+        order: order,
       },
       timeout: 10000,
     });
 
-    const results = response.data.data || [];
+    let results = response.data.data || [];
 
-    // Sortowanie: SubsPlease i Erai-raws na górę
+    // Dodaj wykrywanie rozszerzenia i meta-informacji
+    results = results.map((item: any) => {
+      const title = item.title;
+      const extMatch =
+        title.match(/\.(mkv|mp4|avi|mov)\b/i) ||
+        title.match(/\[(mkv|mp4|avi|mov)\]/i);
+      const extension = extMatch ? extMatch[1].toLowerCase() : "unknown";
+
+      return {
+        ...item,
+        extension,
+        isHevc:
+          title.toLowerCase().includes("hevc") ||
+          title.toLowerCase().includes("h.265") ||
+          title.toLowerCase().includes("x265"),
+      };
+    });
+
+    // Sortowanie: SubsPlease i Erai-raws na górę (zachowujemy priorytet grup)
     return results.sort((a: any, b: any) => {
       const priorityGroups = ["subsplease", "erai-raws"];
       const aTitle = a.title.toLowerCase();
@@ -36,7 +59,21 @@ export async function searchNyaa(query: string) {
 
       if (aHasPriority && !bHasPriority) return -1;
       if (!aHasPriority && bHasPriority) return 1;
-      return 0; // Jeśli oba mają priorytet lub oba nie mają, zostaw kolejność (według seeders z API)
+
+      // Jeśli oba mają ten sam priorytet, sortujemy według parametru sortBy, jeśli nie jest to seeders (bo to już zrobiło API)
+      if (sortBy === "size") {
+        const parseSize = (s: string) => {
+          const val = parseFloat(s);
+          if (s.includes("GiB") || s.includes("GB")) return val * 1024;
+          if (s.includes("MiB") || s.includes("MB")) return val;
+          return val / 1024;
+        };
+        const sizeA = parseSize(a.size);
+        const sizeB = parseSize(b.size);
+        return order === "desc" ? sizeB - sizeA : sizeA - sizeB;
+      }
+
+      return 0;
     });
   } catch (error: any) {
     console.error("Błąd podczas odpytywania Nyaa API:", error.message);

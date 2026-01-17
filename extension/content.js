@@ -137,6 +137,19 @@ function injectStyles() {
     .nyaa-btn-batch:hover { background: #2b9fd9; transform: translateY(-2px); }
     .nyaa-btn-batch:disabled { background: #555; cursor: not-allowed; transform: none; }
 
+    .nyaa-sort-select {
+      background: #333; color: #fff; border: 1px solid #444; border-radius: 4px;
+      padding: 4px 8px; font-size: 0.8rem; cursor: pointer; outline: none;
+    }
+    .nyaa-badge {
+      display: inline-block; padding: 2px 6px; border-radius: 4px;
+      font-size: 0.7rem; font-weight: bold; margin-right: 6px;
+      vertical-align: middle; line-height: 1;
+    }
+    .nyaa-badge-mkv { background: #3db4f2; color: #fff; }
+    .nyaa-badge-mp4 { background: #4ade80; color: #000; }
+    .nyaa-badge-hevc { background: #facc15; color: #000; }
+
     /* Styl dla przycisku na AniList */
     .nyaa-anilist-btn {
       background: #3db4f2;
@@ -159,27 +172,40 @@ function injectStyles() {
   document.head.appendChild(style);
 }
 
-function showSelectionModal(results, animeTitle, mainBtn) {
+function showSelectionModal(
+  results,
+  animeTitle,
+  mainBtn,
+  currentSort = "seeders",
+) {
   if (modalElement) modalElement.remove();
 
   modalElement = document.createElement("div");
   modalElement.className = "nyaa-modal-overlay";
 
   let listHtml = results
-    .map(
-      (item, index) => `
+    .map((item, index) => {
+      const extBadge =
+        item.extension !== "unknown"
+          ? `<span class="nyaa-badge nyaa-badge-${item.extension}">${item.extension.toUpperCase()}</span>`
+          : "";
+      const hevcBadge = item.isHevc
+        ? `<span class="nyaa-badge nyaa-badge-hevc">HEVC</span>`
+        : "";
+
+      return `
     <div class="nyaa-item">
       <input type="checkbox" class="nyaa-checkbox" data-index="${index}" data-magnet="${item.magnet}">
       <div class="nyaa-info">
-        <span class="nyaa-title">${item.title}</span>
+        <span class="nyaa-title">${extBadge} ${hevcBadge} ${item.title}</span>
         <div class="nyaa-meta">
           Size: ${item.size} | Seeders: <span class="nyaa-seeders">${item.seeders}</span> | ${item.time}
         </div>
       </div>
       <button class="nyaa-btn-mini" data-magnet="${item.magnet}">Pobierz</button>
     </div>
-  `,
-    )
+  `;
+    })
     .join("");
 
   if (results.length === 0)
@@ -189,9 +215,13 @@ function showSelectionModal(results, animeTitle, mainBtn) {
   modalElement.innerHTML = `
     <div class="nyaa-modal">
       <div class="nyaa-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
           <input type="checkbox" id="nyaa-select-all" class="nyaa-checkbox">
           <h3>Wybierz wersję (Nyaa.si)</h3>
+          <select id="nyaa-sort-select" class="nyaa-sort-select">
+            <option value="seeders" ${currentSort === "seeders" ? "selected" : ""}>Sortuj: Seedersi</option>
+            <option value="size" ${currentSort === "size" ? "selected" : ""}>Sortuj: Wielkość</option>
+          </select>
         </div>
         <span class="nyaa-close">&times;</span>
       </div>
@@ -203,6 +233,28 @@ function showSelectionModal(results, animeTitle, mainBtn) {
   `;
 
   document.body.appendChild(modalElement);
+
+  // Obsługa sortowania
+  const sortSelect = modalElement.querySelector("#nyaa-sort-select");
+  sortSelect.onchange = async () => {
+    const newSort = sortSelect.value;
+    sortSelect.disabled = true;
+    sortSelect.style.opacity = "0.5";
+
+    try {
+      const response = await fetch(
+        `${CONFIG.BASE_URL}/search?q=${encodeURIComponent(animeTitle)}&sort=${newSort}&order=desc`,
+      );
+      const data = await response.json();
+      if (response.ok) {
+        showSelectionModal(data.data, animeTitle, mainBtn, newSort);
+      }
+    } catch (err) {
+      console.error(err);
+      sortSelect.disabled = false;
+      sortSelect.style.opacity = "1";
+    }
+  };
 
   const selectAll = modalElement.querySelector("#nyaa-select-all");
   const checkboxes = modalElement.querySelectorAll(
