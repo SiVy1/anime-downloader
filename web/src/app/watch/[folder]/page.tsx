@@ -824,16 +824,26 @@ export default function WatchPage() {
                   {currentFile === ep.localPath ? (
                     <Play className="w-4 h-4 text-white fill-white" />
                   ) : !ep.isDownloaded ? (
-                    <button
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
+                        e.preventDefault();
+                        console.log("[Pobierz] Clicked for episode:", ep);
                         searchTorrentsForEpisode(ep);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-[9px] font-black text-white uppercase tracking-wide transition-all shadow-md"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.stopPropagation();
+                          searchTorrentsForEpisode(ep);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-[9px] font-black text-white uppercase tracking-wide transition-all shadow-md cursor-pointer select-none"
                     >
                       <Download className="w-3 h-3" />
                       Pobierz
-                    </button>
+                    </div>
                   ) : ep.watched ? (
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
                   ) : (
