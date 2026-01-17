@@ -8,6 +8,7 @@
 
 import { spawn } from "child_process";
 import path from "path";
+import { FFprobeStream } from "./types/ffprobe";
 
 export interface MediaCodecInfo {
   video: {
@@ -91,11 +92,11 @@ export async function getMediaCodecs(
 
       try {
         const data = JSON.parse(output);
-        const videoStream = data.streams?.find(
-          (s: any) => s.codec_type === "video",
+        const videoStream: FFprobeStream | undefined = data.streams?.find(
+          (s: FFprobeStream) => s.codec_type === "video",
         );
-        const audioStream = data.streams?.find(
-          (s: any) => s.codec_type === "audio",
+        const audioStream: FFprobeStream | undefined = data.streams?.find(
+          (s: FFprobeStream) => s.codec_type === "audio",
         );
         const format = data.format?.format_name || "unknown";
 

@@ -1,5 +1,6 @@
 import axios from "axios";
 import path from "path";
+import { NyaaRawEntry, NyaaSearchResult } from "./types/nyaa";
 
 const QBIT_URL = process.env.QBIT_URL || "http://localhost:8080";
 const QBIT_USER = process.env.QBIT_USER || "admin";
@@ -48,10 +49,10 @@ export async function searchNyaa(
       timeout: 10000,
     });
 
-    let results = response.data.data || [];
+    const rawResults: NyaaRawEntry[] = response.data.data || [];
 
-    // Dodaj wykrywanie rozszerzenia i meta-informacji
-    results = results.map((item: any) => {
+    // Detect file extension and codec metadata
+    const results: NyaaSearchResult[] = rawResults.map((item) => {
       const title = item.title.toLowerCase();
 
       const extMatch =
@@ -80,8 +81,8 @@ export async function searchNyaa(
       };
     });
 
-    // Sortowanie: SubsPlease i Erai-raws na górę (zachowujemy priorytet grup)
-    return results.sort((a: any, b: any) => {
+    // Sort: SubsPlease and Erai-raws to top (preserve group priority)
+    return results.sort((a, b) => {
       const priorityGroups = ["subsplease", "erai-raws"];
       const aTitle = a.title.toLowerCase();
       const bTitle = b.title.toLowerCase();
@@ -96,7 +97,7 @@ export async function searchNyaa(
       if (aHasPriority && !bHasPriority) return -1;
       if (!aHasPriority && bHasPriority) return 1;
 
-      // Jeśli oba mają ten sam priorytet, sortujemy według parametru sortBy, jeśli nie jest to seeders (bo to już zrobiło API)
+      // If both have same priority, sort by sortBy param (unless seeders - already sorted by API)
       if (sortBy === "size") {
         const parseSize = (s: string) => {
           const val = parseFloat(s);
@@ -111,8 +112,8 @@ export async function searchNyaa(
 
       return 0;
     });
-  } catch (error: any) {
-    console.error("Błąd podczas odpytywania Nyaa API:", error.message);
+  } catch (error) {
+    console.error("[Nyaa] Error querying Nyaa API:", error);
     return [];
   }
 }
@@ -145,8 +146,8 @@ export async function addToQBit(magnetLinks: string[], subfolder: string = "") {
       if (hash) hashes.push(hash);
     }
     return hashes;
-  } catch (error: any) {
-    console.error("Błąd podczas połączenia z qBittorrent:", error.message);
+  } catch (error) {
+    console.error("[qBit] Error connecting to qBittorrent:", error);
     return null;
   }
 }

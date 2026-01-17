@@ -23,6 +23,9 @@ export interface JikanAnime {
   status: string;
 }
 
+/** Raw Jikan API anime object (same structure but used for typing raw responses) */
+type JikanApiAnime = JikanAnime;
+
 export interface JikanEpisode {
   mal_id: number;
   title: string;
@@ -96,7 +99,7 @@ export async function searchAnimeFull(query: string): Promise<JikanAnime[]> {
     if (!response.ok) return [];
 
     const data = await response.json();
-    const results = data.data.map((anime: any) => ({
+    const results = data.data.map((anime: JikanApiAnime) => ({
       mal_id: anime.mal_id,
       title: anime.title,
       images: anime.images,

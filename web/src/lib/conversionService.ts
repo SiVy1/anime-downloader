@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { ARIA2_PATH } from "./downloader";
+import { FFprobeMetadata, FFprobeStream } from "./types/ffprobe";
 
 export interface ConversionProgress {
   percent: number;
@@ -92,26 +93,28 @@ export async function convertMkvToMp4(
     );
     return {
       success: false,
-      error: `Brak uprawnień do pliku (własność root?): ${path.basename(inputPath)}`,
+      error: `No read permission for file (root ownership?): ${path.basename(inputPath)}`,
     };
   }
 
   // Probe file for codecs
-  const metadata: any = await new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(inputPath, (err, data) => {
-      if (err) reject(err);
-      else resolve(data);
-    });
-  }).catch((err) => {
+  const metadata: FFprobeMetadata | null = await new Promise<FFprobeMetadata>(
+    (resolve, reject) => {
+      ffmpeg.ffprobe(inputPath, (err, data) => {
+        if (err) reject(err);
+        else resolve(data as FFprobeMetadata);
+      });
+    },
+  ).catch((err) => {
     console.error("[CONVERT PROBE ERROR]", err);
     return null;
   });
 
-  const videoStream = metadata?.streams?.find(
-    (s: any) => s.codec_type === "video",
+  const videoStream: FFprobeStream | undefined = metadata?.streams?.find(
+    (s) => s.codec_type === "video",
   );
-  const audioStream = metadata?.streams?.find(
-    (s: any) => s.codec_type === "audio",
+  const audioStream: FFprobeStream | undefined = metadata?.streams?.find(
+    (s) => s.codec_type === "audio",
   );
 
   const canCopyVideo = videoStream?.codec_name === "h264";
