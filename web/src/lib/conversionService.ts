@@ -1,6 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { ARIA2_PATH } from "./downloader";
 
 export interface ConversionProgress {
@@ -71,24 +72,67 @@ export async function convertMkvToMp4(
     return { success: false, error: "Conversion already in progress" };
   }
 
+  // Ensure output directory exists
+  const outputDir = path.dirname(outputPath);
+  try {
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+  } catch (err: any) {
+    console.error(`[CONVERT DIR ERROR] ${err.message}`);
+    return { success: false, error: `Cannot create directory: ${outputDir}` };
+  }
+
+  // Probe file for codecs
+  const metadata: any = await new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(inputPath, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  }).catch((err) => {
+    console.error("[CONVERT PROBE ERROR]", err);
+    return null;
+  });
+
+  const videoStream = metadata?.streams?.find(
+    (s: any) => s.codec_type === "video",
+  );
+  const audioStream = metadata?.streams?.find(
+    (s: any) => s.codec_type === "audio",
+  );
+
+  const canCopyVideo = videoStream?.codec_name === "h264";
+  const canCopyAudio = audioStream?.codec_name === "aac";
+
+  const cpuCount = os.cpus().length;
+  const threads = Math.max(1, cpuCount - 1);
+
   return new Promise((resolve) => {
-    console.log(`[CONVERT] Starting conversion: ${relativePath}`);
+    console.log(`[CONVERT] Input: ${inputPath}`);
+    console.log(
+      `[CONVERT] Video: ${canCopyVideo ? "COPY" : "TRANSCODE (libx264)"}`,
+    );
+    console.log(
+      `[CONVERT] Audio: ${canCopyAudio ? "COPY" : "TRANSCODE (aac)"}`,
+    );
+    console.log(`[CONVERT] Threads: ${threads}`);
 
     const command = ffmpeg(inputPath)
       .format("mp4")
-      // Try to copy video codec if H.264, otherwise re-encode
-      .videoCodec("libx264")
-      .audioCodec("aac")
+      .videoCodec(canCopyVideo ? "copy" : "libx264")
+      .audioCodec(canCopyAudio ? "copy" : "aac")
       .outputOptions([
-        "-preset fast", // Balance between speed and compression
-        "-crf 20", // High quality
-        "-movflags +faststart", // Web optimization
-        "-map 0:v:0", // First video stream
-        "-map 0:a:0?", // First audio stream (optional)
-        "-map 0:s?", // All subtitle streams (optional)
-        "-c:s mov_text", // Convert subtitles to mp4-compatible format
+        `-threads ${threads}`,
+        "-preset ultrafast",
+        "-crf 23",
+        "-movflags +faststart",
+        "-map 0:v:0",
+        "-map 0:a:0?",
+        "-map 0:s?",
+        "-c:s mov_text",
       ])
-      .on("start", () => {
+      .on("start", (commandLine) => {
+        console.log(`[CONVERT] Command: ${commandLine}`);
         activeConversions.set(inputPath, { progress: 0, command });
       })
       .on("progress", (progress) => {
@@ -104,7 +148,6 @@ export async function convertMkvToMp4(
       .on("error", (err) => {
         console.error(`[CONVERT ERROR] ${err.message}`);
         activeConversions.delete(inputPath);
-        // Clean up temp file
         if (fs.existsSync(tempPath)) {
           fs.unlinkSync(tempPath);
         }
@@ -113,11 +156,9 @@ export async function convertMkvToMp4(
       .on("end", () => {
         console.log(`[CONVERT] Completed: ${relativePath}`);
         activeConversions.delete(inputPath);
-        // Rename temp to final
         if (fs.existsSync(tempPath)) {
           fs.renameSync(tempPath, outputPath);
         }
-        // Delete original MKV file to save disk space
         if (fs.existsSync(inputPath)) {
           fs.unlinkSync(inputPath);
           console.log(`[CONVERT] Deleted original MKV: ${inputPath}`);

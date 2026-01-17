@@ -138,6 +138,66 @@ export default function WatchPage() {
     setShowSubModal(false);
   };
 
+  // Status check on mount/file change
+  useEffect(() => {
+    if (currentFile && currentFile.toLowerCase().endsWith(".mkv")) {
+      const checkStatus = async () => {
+        try {
+          const res = await fetch(
+            `/api/convert/${folder}/${encodeURIComponent(currentFile)}`,
+          );
+          const data = await res.json();
+
+          if (data.status === "completed") {
+            setIsConverted(true);
+            setIsConverting(false);
+          } else if (data.status === "in_progress") {
+            setIsConverting(true);
+            setConvertProgress(data.progress || 0);
+            startPolling();
+          } else {
+            setIsConverted(false);
+            setIsConverting(false);
+          }
+        } catch (err) {
+          console.error("Status check error:", err);
+        }
+      };
+
+      checkStatus();
+    } else {
+      setIsConverted(false);
+      setIsConverting(false);
+    }
+  }, [currentFile, folder]);
+
+  const startPolling = () => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusRes = await fetch(
+          `/api/convert/${folder}/${encodeURIComponent(currentFile || "")}`,
+        );
+        const statusData = await statusRes.json();
+
+        setConvertProgress(statusData.progress || 0);
+
+        if (statusData.status === "completed") {
+          clearInterval(pollInterval);
+          setIsConverting(false);
+          setIsConverted(true);
+          window.location.reload();
+        } else if (statusData.status === "not_started") {
+          clearInterval(pollInterval);
+          setIsConverting(false);
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        clearInterval(pollInterval);
+      }
+    }, 2000);
+    return pollInterval;
+  };
+
   // Start MKV to MP4 conversion
   const startConversion = async () => {
     if (!currentFile || !currentFile.toLowerCase().endsWith(".mkv")) return;
@@ -161,31 +221,8 @@ export default function WatchPage() {
         return;
       }
 
-      // Poll for progress
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusRes = await fetch(
-            `/api/convert/${folder}/${encodeURIComponent(currentFile)}`,
-          );
-          const statusData = await statusRes.json();
-
-          setConvertProgress(statusData.progress || 0);
-
-          if (statusData.status === "completed") {
-            clearInterval(pollInterval);
-            setIsConverting(false);
-            setIsConverted(true);
-            // Reload to use converted file
-            window.location.reload();
-          } else if (statusData.status === "not_started") {
-            // Conversion failed or was cancelled
-            clearInterval(pollInterval);
-            setIsConverting(false);
-          }
-        } catch (err) {
-          console.error("Conversion status error:", err);
-        }
-      }, 2000); // Poll every 2 seconds
+      // Start polling for progress
+      startPolling();
     } catch (err) {
       console.error("Conversion error:", err);
       setIsConverting(false);
