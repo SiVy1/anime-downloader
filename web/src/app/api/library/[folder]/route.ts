@@ -93,13 +93,24 @@ export async function GET(
             matchingFile &&
             (!ep.isDownloaded || ep.localPath !== matchingFile)
           ) {
+            console.log(
+              `[Library Sync] Episode ${ep.number}: Setting isDownloaded=true, localPath=${matchingFile}`,
+            );
             ep.isDownloaded = true;
             ep.localPath = matchingFile;
             await ep.save();
-          } else if (!matchingFile && ep.isDownloaded) {
+          } else if (!matchingFile && (ep.isDownloaded || ep.localPath)) {
+            // Clear both isDownloaded AND stale localPath
+            console.log(
+              `[Library Sync] Episode ${ep.number}: Clearing (file not found, isDownloaded=${ep.isDownloaded}, localPath=${ep.localPath})`,
+            );
             ep.isDownloaded = false;
+            ep.localPath = undefined;
             await ep.save();
           }
+          console.log(
+            `[Library Sync] Episode ${ep.number}: Final state isDownloaded=${ep.isDownloaded}`,
+          );
           return ep;
         }),
       );
