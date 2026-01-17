@@ -260,8 +260,9 @@ export default function AnimeDetailPage() {
               </p>
 
               <div className="flex items-center gap-4">
-                {/* Action Buttons */}
+                {/* Action Buttons - Simplified */}
                 {data.anime.localFolderName ? (
+                  // Has linked folder - show Watch button
                   <Link
                     href={`/watch/${encodeURIComponent(data.anime.localFolderName)}`}
                     className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group"
@@ -270,30 +271,35 @@ export default function AnimeDetailPage() {
                     Oglądaj
                   </Link>
                 ) : data.anime._id ? (
-                  <button
-                    onClick={() => openLinkModal()}
+                  // In library but no folder - show Watch (will create folder on download)
+                  <Link
+                    href={`/watch/${encodeURIComponent(data.anime.title)}`}
                     className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group"
                   >
                     <Play className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
-                    Powiąż folder i oglądaj
-                  </button>
+                    Oglądaj
+                  </Link>
                 ) : (
+                  // Not in library - show Track button
                   <button
                     disabled={isAddingToLibrary}
                     onClick={() => addToLibrary()}
-                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group disabled:opacity-50"
+                    className="flex items-center gap-3 px-8 py-4 bg-green-600 hover:bg-green-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-green-600/20 group disabled:opacity-50"
                   >
                     {isAddingToLibrary ? (
                       <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                     ) : (
                       <CheckCircle2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     )}
-                    {isAddingToLibrary ? "Dodawanie..." : "Dodaj do biblioteki"}
+                    {isAddingToLibrary ? "Dodawanie..." : "Śledź"}
                   </button>
                 )}
-                {data.anime._id && !data.anime.localFolderName && (
-                  <span className="text-[10px] text-green-500 font-black uppercase tracking-widest flex items-center gap-2">
-                    <CheckCircle2 className="w-3 h-3" />W Bibliotece
+
+                {/* Tracking status indicator */}
+                {data.anime._id && (
+                  <span className="text-[10px] text-green-500 font-black uppercase tracking-widest flex items-center gap-2 px-4 py-2 bg-green-500/10 rounded-xl border border-green-500/20">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Śledzisz
                   </span>
                 )}
               </div>

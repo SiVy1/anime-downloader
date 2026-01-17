@@ -16,8 +16,12 @@ export async function GET(
   try {
     await connectDB();
 
-    // 1. Try to find anime in database by folder name
-    const anime = await Anime.findOne({ localFolderName: decodedFolder });
+    // 1. Try to find anime in database by folder name OR by title
+    let anime = await Anime.findOne({ localFolderName: decodedFolder });
+    if (!anime) {
+      // Fallback: try to find by title (for newly tracked anime without folder)
+      anime = await Anime.findOne({ title: decodedFolder });
+    }
 
     // 2. Check if local folder exists
     const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, decodedFolder) : null;

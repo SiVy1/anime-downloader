@@ -1,9 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Play, Folder, Search, HardDrive, Star, CloudOff } from "lucide-react";
+import {
+  Play,
+  Folder,
+  Search,
+  HardDrive,
+  Star,
+  CloudOff,
+  Calendar,
+  Library,
+  Compass,
+  Plus,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
-import type { JikanAnime } from "@/lib/jikanService";
+import SeasonView from "@/components/SeasonView";
+
+type Tab = "library" | "season" | "search";
 
 // Card for database anime (has full metadata)
 function DbAnimeCard({ anime }: { anime: any }) {
@@ -41,12 +55,12 @@ function DbAnimeCard({ anime }: { anime: any }) {
           </div>
         )}
 
-        {/* Unlinked indicator */}
+        {/* Status indicator */}
         {!hasFolder && (
           <div className="absolute top-2 right-2 px-2 py-1 bg-orange-500/20 border border-orange-500/30 rounded-lg flex items-center gap-1">
             <CloudOff className="w-3 h-3 text-orange-400" />
             <span className="text-[8px] font-black text-orange-400 uppercase">
-              Online
+              Tylko online
             </span>
           </div>
         )}
@@ -73,62 +87,47 @@ function DbAnimeCard({ anime }: { anime: any }) {
   );
 }
 
-// Card for unlinked folders (no database entry)
-function FolderCard({ folder }: { folder: string }) {
-  return (
-    <Link
-      href={`/watch/${encodeURIComponent(folder)}`}
-      className="group relative flex flex-col h-full"
-    >
-      <div className="aspect-[3/4] relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 group-hover:border-blue-500/50 transition-all duration-300 shadow-lg">
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/10 to-transparent">
-          <Folder className="w-12 h-12 text-white/20" />
-          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest text-center px-4">
-            Unlinked Folder
-          </span>
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40">
-          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-xl">
-            <Play className="w-6 h-6 fill-white ml-1" />
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 px-1">
-        <p className="text-xs font-bold leading-tight line-clamp-2 group-hover:text-blue-400 transition-colors uppercase tracking-tight">
-          {folder}
-        </p>
-      </div>
-    </Link>
-  );
-}
-
 export default function LibraryPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("library");
   const [libraryAnime, setLibraryAnime] = useState<any[]>([]);
-  const [unlinkedFolders, setUnlinkedFolders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineResults, setOnlineResults] = useState<any[]>([]);
   const [isSearchingOnline, setIsSearchingOnline] = useState(false);
+  const [isAddingToLibrary, setIsAddingToLibrary] = useState<number | null>(
+    null,
+  );
 
-  useEffect(() => {
+  // Tracked anime MAL IDs for SeasonView
+  const trackedIds = new Set(libraryAnime.map((a) => a.malId));
+
+  const fetchLibrary = () => {
     fetch("/api/library")
       .then((res) => res.json())
       .then((data) => {
         if (data.anime) setLibraryAnime(data.anime);
-        if (data.unlinkedFolders) setUnlinkedFolders(data.unlinkedFolders);
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchLibrary();
   }, []);
 
-  // Wyszukiwanie online z debouncingiem (uproszczonym)
+  // Online search with debouncing
   useEffect(() => {
     if (searchQuery.length < 3) {
       setOnlineResults([]);
       return;
+    }
+
+    // Switch to search tab when typing
+    if (activeTab !== "search") {
+      setActiveTab("search");
     }
 
     const timer = setTimeout(async () => {
@@ -149,19 +148,39 @@ export default function LibraryPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Filter library anime by search query
+  const addToLibrary = async (anime: any) => {
+    const malId = anime.mal_id || anime.malId;
+    setIsAddingToLibrary(malId);
+    try {
+      const res = await fetch(`/api/anime/${malId}/add`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchLibrary(); // Refresh library
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAddingToLibrary(null);
+    }
+  };
+
   const filteredAnime = libraryAnime.filter((a) =>
     a.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-  const filteredUnlinked = unlinkedFolders.filter((f) =>
-    f.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+
+  const tabs = [
+    { id: "library" as Tab, label: "Moja Biblioteka", icon: Library },
+    { id: "season" as Tab, label: "Aktualny Sezon", icon: Calendar },
+    { id: "search" as Tab, label: "Szukaj", icon: Compass },
+  ];
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
-      {/* Search Header */}
-      <div className="sticky top-0 z-50 bg-[#0a0a0a]/60 backdrop-blur-xl border-b border-white/5 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20">
               <Play className="w-5 h-5 fill-white" />
@@ -171,147 +190,240 @@ export default function LibraryPage() {
                 AniStream
               </h1>
               <p className="text-[9px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">
-                Alpha v0.3
+                Alpha v0.4
               </p>
             </div>
           </div>
 
           <div className="flex-1 max-w-lg relative">
             <Search
-              className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${isSearchingOnline ? "text-blue-500 animate-pulse" : "text-white/20"}`}
+              className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+                isSearchingOnline
+                  ? "text-blue-500 animate-pulse"
+                  : "text-white/20"
+              }`}
             />
             <input
               type="text"
-              placeholder="Wyszukaj anime w kolekcji lub online..."
+              placeholder="Wyszukaj anime..."
               className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-2.5 pl-11 pr-4 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.05] transition-all text-sm font-medium"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="hidden md:flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-white/40">
+          <div className="hidden md:flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5">
               <HardDrive className="w-3 h-3 text-blue-500" />
-              <span>{libraryAnime.length} Series</span>
+              <span>{libraryAnime.length} Śledzonych</span>
             </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto px-6 pb-2">
+          <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                  activeTab === tab.id
+                    ? "bg-blue-600 text-white shadow-lg"
+                    : "text-white/40 hover:text-white/60 hover:bg-white/5"
+                }`}
+              >
+                <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Sekcja wyników online jeśli szukamy */}
-        {searchQuery.length >= 3 && (
-          <section className="mb-16">
+        {/* Library Tab */}
+        {activeTab === "library" && (
+          <section>
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-sm font-black italic uppercase tracking-widest flex items-center gap-3 text-white/40">
                 <div className="w-4 h-[2px] bg-blue-600" />
-                Wyniki Online
+                Śledzone Serie
               </h2>
             </div>
 
-            {isSearchingOnline ? (
-              <div className="flex items-center gap-4 text-xs text-white/20 font-bold uppercase tracking-widest animate-pulse">
-                <div className="w-4 h-4 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-                Przeszukiwanie bazy globalnej...
-              </div>
-            ) : onlineResults.length > 0 ? (
+            {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                {onlineResults.map((anime) => (
-                  <div
-                    key={anime.mal_id}
-                    className="group relative flex flex-col h-full bg-white/[0.02] rounded-2xl border border-white/5 overflow-hidden hover:border-blue-500/30 transition-all"
-                  >
-                    <div className="aspect-[3/4] relative overflow-hidden">
-                      <img
-                        src={
-                          anime.images.webp.large_image_url ||
-                          anime.images.webp.image_url
-                        }
-                        alt={anime.title}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      {anime.inLibrary && (
-                        <div className="absolute top-2 right-2 px-2 py-1 bg-green-600/90 backdrop-blur-md rounded-lg text-[8px] font-black uppercase tracking-widest text-white shadow-lg">
-                          W kolekcji
-                        </div>
-                      )}
-
-                      {/* Akcje dla wyniku online */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                        <Link
-                          href={`/anime/${anime.mal_id}`}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
-                        >
-                          Szczegóły
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-[10px] font-bold line-clamp-2 leading-tight uppercase tracking-tight text-white/80 group-hover:text-white transition-colors">
-                        {anime.title}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">
-                          {anime.type} • {anime.episodes || "?"} EP
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
-                          <span className="text-[9px] font-black">
-                            {anime.score || "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="flex flex-col gap-3">
+                    <div className="aspect-[3/4] bg-white/5 rounded-2xl animate-pulse border border-white/5" />
+                    <div className="h-4 bg-white/5 rounded-md animate-pulse w-3/4" />
                   </div>
                 ))}
               </div>
+            ) : filteredAnime.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 lg:gap-8">
+                {filteredAnime.map((anime) => (
+                  <DbAnimeCard key={anime._id} anime={anime} />
+                ))}
+              </div>
             ) : (
-              <div className="text-xs text-white/20 font-bold uppercase tracking-widest italic">
-                Brak wyników w bazie globalnej dla "{searchQuery}"
+              <div className="text-center py-32 bg-white/[0.02] rounded-[3rem] border border-dashed border-white/10 flex flex-col items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                  <Library className="w-10 h-10 text-white/10" />
+                </div>
+                <p className="text-white/40 font-bold uppercase tracking-widest text-sm">
+                  Twoja biblioteka jest pusta
+                </p>
+                <p className="text-[10px] text-white/20 uppercase mt-2 max-w-md">
+                  Przejdź do &quot;Aktualny Sezon&quot; lub &quot;Szukaj&quot;
+                  aby znaleźć anime i kliknij &quot;Śledź&quot;
+                </p>
+                <button
+                  onClick={() => setActiveTab("season")}
+                  className="mt-6 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Przeglądaj Sezon
+                </button>
               </div>
             )}
-
-            <div className="mt-12 h-[1px] bg-white/5" />
           </section>
         )}
 
-        <div className="flex items-center justify-between mb-10">
-          <h2 className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-3">
-            <div className="w-8 h-1 bg-blue-600 rounded-full" />
-            Moja Biblioteka
-          </h2>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="flex flex-col gap-3">
-                <div className="aspect-[3/4] bg-white/5 rounded-2xl animate-pulse border border-white/5" />
-                <div className="h-4 bg-white/5 rounded-md animate-pulse w-3/4" />
-              </div>
-            ))}
-          </div>
-        ) : filteredAnime.length > 0 || filteredUnlinked.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 lg:gap-8">
-            {filteredAnime.map((anime) => (
-              <DbAnimeCard key={anime._id} anime={anime} />
-            ))}
-            {filteredUnlinked.map((folder) => (
-              <FolderCard key={folder} folder={folder} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-32 bg-white/[0.02] rounded-[3rem] border border-dashed border-white/10 flex flex-col items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-              <Folder className="w-10 h-10 text-white/10" />
+        {/* Season Tab */}
+        {activeTab === "season" && (
+          <section>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-black italic uppercase tracking-widest flex items-center gap-3 text-white/40">
+                <div className="w-4 h-[2px] bg-purple-600" />
+                Aktualnie Emitowane
+              </h2>
             </div>
-            <p className="text-white/40 font-bold uppercase tracking-widest text-sm">
-              Biblioteka jest pusta
-            </p>
-            <p className="text-[10px] text-white/20 uppercase mt-2">
-              Brak dopasowań dla "{searchQuery}"
-            </p>
-          </div>
+            <SeasonView trackedIds={trackedIds} onTrack={addToLibrary} />
+          </section>
+        )}
+
+        {/* Search Tab */}
+        {activeTab === "search" && (
+          <section>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-black italic uppercase tracking-widest flex items-center gap-3 text-white/40">
+                <div className="w-4 h-[2px] bg-green-600" />
+                Wyniki Wyszukiwania
+              </h2>
+            </div>
+
+            {searchQuery.length < 3 ? (
+              <div className="text-center py-32 bg-white/[0.02] rounded-[3rem] border border-dashed border-white/10 flex flex-col items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                  <Search className="w-10 h-10 text-white/10" />
+                </div>
+                <p className="text-white/40 font-bold uppercase tracking-widest text-sm">
+                  Wpisz co najmniej 3 znaki
+                </p>
+                <p className="text-[10px] text-white/20 uppercase mt-2">
+                  Przeszukamy globalną bazę anime
+                </p>
+              </div>
+            ) : isSearchingOnline ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/30">
+                    Szukanie...
+                  </p>
+                </div>
+              </div>
+            ) : onlineResults.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                {onlineResults.map((anime) => {
+                  const isTracked = trackedIds.has(anime.mal_id);
+                  const isAdding = isAddingToLibrary === anime.mal_id;
+                  return (
+                    <div
+                      key={anime.mal_id}
+                      className="group relative flex flex-col"
+                    >
+                      <div className="aspect-[3/4] relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 group-hover:border-blue-500/50 transition-all duration-300 shadow-lg">
+                        <img
+                          src={
+                            anime.images?.jpg?.large_image_url ||
+                            anime.images?.jpg?.image_url
+                          }
+                          alt={anime.title}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+
+                        {/* Score */}
+                        {anime.score && (
+                          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-lg">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-[10px] font-black text-white">
+                              {anime.score}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Tracked badge */}
+                        {isTracked && (
+                          <div className="absolute top-2 right-2 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded-lg">
+                            <span className="text-[8px] font-black text-green-400 uppercase">
+                              Śledzisz
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Hover with action */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60 backdrop-blur-sm">
+                          <Link
+                            href={`/anime/${anime.mal_id}`}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                          >
+                            Szczegóły
+                          </Link>
+                          {!isTracked && (
+                            <button
+                              disabled={isAdding}
+                              onClick={() => addToLibrary(anime)}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg disabled:opacity-50"
+                            >
+                              {isAdding ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Plus className="w-3 h-3" />
+                              )}
+                              Śledź
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 px-1">
+                        <Link
+                          href={`/anime/${anime.mal_id}`}
+                          className="block group-hover:text-blue-400 transition-colors"
+                        >
+                          <p className="text-xs font-bold leading-tight line-clamp-2 uppercase tracking-tight">
+                            {anime.title}
+                          </p>
+                        </Link>
+                        <p className="text-[9px] text-white/30 mt-1">
+                          {anime.type} • {anime.episodes || "?"} odc.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-white/30 text-sm">
+                  Brak wyników dla &quot;{searchQuery}&quot;
+                </p>
+              </div>
+            )}
+          </section>
         )}
       </main>
     </div>
