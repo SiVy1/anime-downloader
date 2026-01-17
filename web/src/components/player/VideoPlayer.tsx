@@ -47,7 +47,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           src={streamUrl}
           crossOrigin
           playsInline
-          streamType={streamType as "on-demand" | "live" | "live:dvr"}
+          streamType={streamType === "live" ? "live:dvr" : "on-demand"}
           minLiveDVRWindow={streamType.includes("live") ? 1 : undefined}
           onTimeUpdate={onTimeUpdate}
           onDurationChange={onDurationChange}
