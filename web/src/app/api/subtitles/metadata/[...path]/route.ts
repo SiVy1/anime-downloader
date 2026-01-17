@@ -41,6 +41,8 @@ export async function GET(
           codec: s.codec_name,
           language: s.tags?.language || "unknown",
           title: s.tags?.title || `Track ${index + 1}`,
+          // ASS/SSA formats support styling - use JASSUB for these
+          isASS: s.codec_name === "ass" || s.codec_name === "ssa",
         }));
 
       resolve(
