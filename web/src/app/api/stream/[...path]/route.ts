@@ -26,16 +26,21 @@ export async function GET(
 
   const ext = path.extname(fullPath).toLowerCase();
 
-  // MKV files are now served directly - modern browsers (Chrome, Firefox, Edge) support MKV playback
-  // This preserves seeking, duration, and subtitle sync (unlike live transcoding)
-
-  // Standardowy streaming z obsługą Range (dla MKV i MP4)
+  // Serve all video files directly with Range support
+  // MKV/HEVC works natively in Edge and Safari, Chrome may need HEVC extension
   const stat = fs.statSync(fullPath);
   const fileSize = stat.size;
   const range = req.headers.get("range");
 
-  // Set proper content type
-  const contentType = ext === ".mkv" ? "video/x-matroska" : "video/mp4";
+  // Set proper content type based on extension
+  const mimeTypes: Record<string, string> = {
+    ".mkv": "video/x-matroska",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".avi": "video/x-msvideo",
+    ".mov": "video/quicktime",
+  };
+  const contentType = mimeTypes[ext] || "video/mp4";
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");

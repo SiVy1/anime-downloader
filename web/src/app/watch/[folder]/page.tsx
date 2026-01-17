@@ -85,6 +85,21 @@ export default function WatchPage() {
     ? `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
     : "";
 
+  // Determine video MIME type for proper playback (Edge/Safari support HEVC natively)
+  const getVideoType = (filename: string): string => {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      mkv: "video/x-matroska",
+      mp4: "video/mp4",
+      webm: "video/webm",
+      avi: "video/x-msvideo",
+      mov: "video/quicktime",
+    };
+    return mimeTypes[ext || ""] || "video/mp4";
+  };
+
+  const videoType = currentFile ? getVideoType(currentFile) : "video/mp4";
+
   const searchSubtitles = async () => {
     if (!currentFile) return;
     setIsSearchingSubs(true);
