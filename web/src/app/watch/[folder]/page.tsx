@@ -20,12 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import {
-  searchAnime,
-  getAnimeEpisodes,
-  JikanAnime,
-  JikanEpisode,
-} from "@/lib/jikanService";
+import type { JikanAnime, JikanEpisode } from "@/lib/jikanService";
 
 // Vidstack Core & React
 import "@vidstack/react/player/styles/default/theme.css";
@@ -91,15 +86,35 @@ export default function WatchPage() {
         setLoading(false);
       });
 
-    // Fetch Jikan info
-    searchAnime(decodedFolder)
-      .then((info) => {
-        setAnimeInfo(info);
-        if (info) {
-          getAnimeEpisodes(info.mal_id).then(setEpisodesInfo);
+    // Fetch Jikan info via API
+    const fetchMetadata = async () => {
+      try {
+        setLoadingInfo(true);
+        // 1. Find best match via search API
+        const searchRes = await fetch(
+          `/api/anime/search?q=${encodeURIComponent(decodedFolder)}`,
+        );
+        const searchData = await searchRes.json();
+
+        if (searchData.results && searchData.results.length > 0) {
+          const bestMatch = searchData.results[0];
+          setAnimeInfo(bestMatch);
+
+          // 2. Get full details and episodes via detail API
+          const detailRes = await fetch(`/api/anime/${bestMatch.mal_id}`);
+          const detailData = await detailRes.json();
+          if (detailData.episodes) {
+            setEpisodesInfo(detailData.episodes);
+          }
         }
-      })
-      .finally(() => setLoadingInfo(false));
+      } catch (err) {
+        console.error("Metadata fetch error:", err);
+      } finally {
+        setLoadingInfo(false);
+      }
+    };
+
+    fetchMetadata();
   }, [folder, decodedFolder]);
 
   // Pobieranie wewnętrznych napisów gdy zmieni się plik

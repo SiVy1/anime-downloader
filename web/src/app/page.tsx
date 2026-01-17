@@ -3,16 +3,29 @@
 import { useState, useEffect } from "react";
 import { Play, Folder, Search, HardDrive, Star } from "lucide-react";
 import Link from "next/link";
-import { searchAnime, JikanAnime } from "@/lib/jikanService";
+import type { JikanAnime } from "@/lib/jikanService";
 
 function AnimeCard({ folder }: { folder: string }) {
   const [anime, setAnime] = useState<JikanAnime | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    searchAnime(folder)
-      .then(setAnime)
-      .finally(() => setLoading(false));
+    const fetchMetadata = async () => {
+      try {
+        const res = await fetch(
+          `/api/anime/search?q=${encodeURIComponent(folder)}`,
+        );
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          setAnime(data.results[0]);
+        }
+      } catch (err) {
+        console.error("Card metadata fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMetadata();
   }, [folder]);
 
   return (
