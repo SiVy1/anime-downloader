@@ -1,10 +1,12 @@
 /**
- * animeParser - Robust anime filename parsing with regex fallback
+ * animeParser - Robust anime filename parsing without binary dependencies
  *
- * This utility wraps 'anitomyscript' (which uses WASM) and provides
- * a pure JavaScript regex-based fallback if the WASM fails to load
- * (common in some Node/VPS environments).
+ * This utility uses 'anime-name-tool' (pure JS) to parse anime filenames.
+ * It replaces the crashing 'anitomyscript' (WASM) to ensure stability
+ * across all environments (local, VPS, Docker, etc.).
  */
+
+import { parseFileName } from "anime-name-tool";
 
 export interface ParsedAnimeFile {
   anime_title: string;
@@ -14,50 +16,40 @@ export interface ParsedAnimeFile {
 }
 
 /**
- * Parses anime filename with WASM-based Anitomy, falling back to regex on error.
- * Bypasses WASM if SKIP_ANITOMY_WASM environment variable is set.
+ * Parses anime filename with pure JS parser, falling back to regex on error.
  */
 export async function parseAnimeFilename(
   filename: string,
 ): Promise<ParsedAnimeFile> {
   const cleanFilename = filename.split("/").pop() || filename;
 
-  // Kill-switch for VPS environments where WASM crashes the entire process
-  if (process.env.SKIP_ANITOMY_WASM === "true") {
-    return simpleParseFilename(cleanFilename);
-  }
-
   try {
-    // 1. Attempt using anitomyscript (WASM)
-    // We wrap the import and execution carefully as errors here can be process-level
-    const anitomyscript = await import("anitomyscript").catch(() => null);
-    if (!anitomyscript) throw new Error("Could not import anitomyscript");
+    // 1. Use pure JS anime-name-tool
+    const result = parseFileName(cleanFilename);
 
-    const parse = anitomyscript.default;
-    if (typeof parse !== "function")
-      throw new Error("Anitomy default export is not a function");
+    if (result && result.title) {
+      // Extract release group from [Group] Title... format
+      let group: string | null = null;
+      if (result.groupIndex && result.groupIndex.content) {
+        group = result.groupIndex.content.replace(/^\[|\]$/g, "");
+      }
 
-    const result = await parse(cleanFilename);
-    const parsed = Array.isArray(result) ? result[0] : result;
-
-    if (parsed && parsed.anime_title) {
       return {
-        anime_title: parsed.anime_title || "",
-        episode_number: parsed.episode_number || null,
-        release_group: parsed.release_group || null,
-        video_resolution: parsed.video_resolution || null,
+        anime_title: result.title,
+        episode_number: result.episode ? String(result.episode) : null,
+        release_group: group,
+        video_resolution: result.quality?.resolution || null,
       };
     }
-
-    // Fall through if it parsed but didn't find a title
-    throw new Error("Anitomy failed to extract title");
   } catch (err) {
     console.warn(
-      "[AnimeParser] Anitomy WASM failed or threw error, using regex fallback:",
+      "[AnimeParser] Pure JS parser failed, using regex fallback:",
       err,
     );
-    return simpleParseFilename(cleanFilename);
   }
+
+  // 2. Ultimate Fallback (Regex)
+  return simpleParseFilename(cleanFilename);
 }
 
 /**
@@ -85,31 +77,25 @@ function simpleParseFilename(filename: string): ParsedAnimeFile {
   }
 
   // 3. Extract Episode Number
-  // Priority:
-  // - " - 01"
-  // - "Ep 01"
-  // - "E01"
   let episode_number: string | null = null;
   const epMatch =
     workingName.match(/\s-\s(\d{1,4})(\s|$)/) ||
     workingName.match(/Ep\s?(\d{1,4})/i) ||
-    workingName.match(/E(\d{1,4})\b/i);
+    workingName.match(/E(\d{1,4})\b/i) ||
+    workingName.match(/\b(\d{1,4})\b/); // Bare number as last resort
 
   if (epMatch) {
     episode_number = epMatch[1];
-    // Remove episode from name to help isolate title
     workingName = workingName.replace(epMatch[0], " ").trim();
   }
 
   // 4. Remaining text is likely the title
-  // Clean up common leftovers like hashes [AABBCCDD] or leading/trailing dashes
   let anime_title = workingName
-    .replace(/\[[A-F0-9]{8}\]/i, "") // CRC hash
-    .replace(/^[\s\-_]+|[\s\-_]+$/g, "") // Leading/trailing junk
-    .replace(/\s+/g, " ") // Normalize spaces
+    .replace(/\[[A-F0-9]{8}\]/i, "")
+    .replace(/^[\s\-_]+|[\s\-_]+$/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 
-  // If we still have no title but have a group/filename, use filenames head
   if (!anime_title) {
     anime_title = filename.split(".")[0] || filename;
   }

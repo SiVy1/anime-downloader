@@ -13,6 +13,7 @@
     "@types/mongoose": "^5.11.96",
     "@vidstack/react": "^1.12.13",
     "adm-zip": "^0.5.16",
+    "anime-name-tool": "^1.0.6",
     "anitomyscript": "^2.0.4",
     "axios": "^1.13.2",
     "fluent-ffmpeg": "^2.1.3",
