@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
+import env from "@/lib/env";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing file_id" }, { status: 400 });
   }
 
-  const apiKey = process.env.OPENSUBTITLES_API_KEY;
+  const apiKey = env.subtitles.openSubtitlesKey;
   if (!apiKey) {
     return NextResponse.json(
       { error: "API Key not configured" },

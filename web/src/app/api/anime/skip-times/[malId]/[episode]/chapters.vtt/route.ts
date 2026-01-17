@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import env from "@/lib/env";
 
 /**
  * Proxy for AniSkip API to fetch skip times and convert them to WebVTT Chapters
@@ -15,8 +16,7 @@ export async function GET(
   const apiUrl = `https://api.aniskip.com/v2/skip-times/${malId}/${episode}?types[]=op&types[]=ed&types[]=recap&types[]=mixed-op&types[]=mixed-ed&episodeLength=${episodeLength}`;
 
   try {
-    const clientId =
-      process.env.ANISKIP_CLIENT_ID || "ZGfO0sMF3eCwLYf8yMSCJjlynwNGRXWE";
+    const clientId = env.aniskip.clientId;
 
     const response = await fetch(apiUrl, {
       headers: {

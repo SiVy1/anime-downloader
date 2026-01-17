@@ -1,15 +1,11 @@
-import fs from "fs";
+import { promises as fsp } from "fs";
 import path from "path";
 import { ARIA2_PATH, downloaderService } from "./downloader";
-import {
-  convertMkvToMp4,
-  hasConvertedVersion,
-  getMp4Path,
-} from "./conversionService";
-import { getAllFiles } from "./utils/filesystem";
+import { convertMkvToMp4, hasConvertedVersion } from "./conversionService";
+import { getAllFiles, exists } from "./utils/filesystem";
 
 /**
- * AutoConverter - Background service that monitors for new MKV files
+ * AutoConverter - Background service that monitors for new MKV files (Asynchronous)
  */
 class AutoConverter {
   private isRunning = false;
@@ -24,7 +20,7 @@ class AutoConverter {
     this.isRunning = true;
     console.log("[AUTO-CONVERT] Service started monitoring:", ARIA2_PATH);
 
-    // Initial scan and then every 10 seconds
+    // Initial scan and then every 30 seconds
     this.scan();
     this.interval = setInterval(() => this.scan(), 30000);
   }
@@ -41,19 +37,20 @@ class AutoConverter {
    * Scan the anime directory for MKV files that need conversion
    */
   async scan() {
-    if (!ARIA2_PATH || !fs.existsSync(ARIA2_PATH)) return;
+    if (!ARIA2_PATH || !(await exists(ARIA2_PATH))) return;
 
     try {
       // Get list of currently downloading files from qBittorrent
-      // This is the most reliable way to avoid converting partial files
       const downloadingFiles = await downloaderService.getActiveDownloads();
-      const folders = fs.readdirSync(ARIA2_PATH);
+      const folders = await fsp.readdir(ARIA2_PATH);
 
       for (const folder of folders) {
         const folderPath = path.join(ARIA2_PATH, folder);
-        if (!fs.statSync(folderPath).isDirectory()) continue;
+        const stats = await fsp.stat(folderPath).catch(() => null);
 
-        const files = getAllFiles(folderPath);
+        if (!stats || !stats.isDirectory()) continue;
+
+        const files = await getAllFiles(folderPath);
         const mkvFiles = files.filter((f) => f.toLowerCase().endsWith(".mkv"));
 
         for (const mkvPath of mkvFiles) {

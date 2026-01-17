@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
 import path from "path";
 import { ARIA2_PATH, downloaderService } from "@/lib/downloader";
 import { connectDB } from "@/lib/db";
 import { Anime, Episode } from "@/models/Anime";
-import { getVideoFiles } from "@/lib/utils/filesystem";
+import { getVideoFiles, exists } from "@/lib/utils/filesystem";
 import { extractEpisodeNumber } from "@/lib/animeParser";
 
 export async function GET(
@@ -25,11 +24,11 @@ export async function GET(
       anime = await Anime.findOne({ title: decodedFolder });
     }
 
-    // 2. Check if local folder exists
+    // 2. Check if local folder exists (Asynchronous)
     const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, decodedFolder) : null;
-    const folderExists = fullPath && fs.existsSync(fullPath);
+    const folderExists = fullPath && (await exists(fullPath));
 
-    const localFiles = folderExists ? getVideoFiles(fullPath!) : [];
+    const localFiles = folderExists ? await getVideoFiles(fullPath!) : [];
     console.log(
       `[Library Debug] Folder: ${decodedFolder}, Files found:`,
       localFiles,
@@ -46,9 +45,6 @@ export async function GET(
         dbEpisodes.map(async (ep) => {
           const matchingFile = localFiles.find((f) => {
             const epNum = extractEpisodeNumber(f);
-            console.log(
-              `[Library Debug] File: ${f}, Extracted: ${epNum}, Looking for: ${ep.number}`,
-            );
             return epNum === ep.number;
           });
 
@@ -71,9 +67,6 @@ export async function GET(
             ep.localPath = undefined;
             await ep.save();
           }
-          console.log(
-            `[Library Sync] Episode ${ep.number}: Final state isDownloaded=${ep.isDownloaded}`,
-          );
           return ep;
         }),
       );

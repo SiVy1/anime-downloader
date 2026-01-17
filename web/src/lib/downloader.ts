@@ -1,5 +1,6 @@
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import path from "path";
+import env from "./env";
 import { NyaaRawEntry, NyaaSearchResult } from "./types/nyaa";
 import {
   QBitTorrent,
@@ -8,44 +9,28 @@ import {
   DownloadStatus,
 } from "./types/qbittorrent";
 
-// Environment variables validation
-const QBIT_URL = process.env.QBIT_URL || "http://localhost:8080";
-const QBIT_USER = process.env.QBIT_USER;
-const QBIT_PASS = process.env.QBIT_PASS;
-export const ARIA2_PATH = process.env.ARIA2_PATH || "";
+// Using central config from env.ts
+const {
+  qbitUrl: QBIT_URL,
+  qbitUser: QBIT_USER,
+  qbitPass: QBIT_PASS,
+  aria2Path: ARIA2_PATH,
+} = env.downloader;
+export { ARIA2_PATH };
 
 const NYAA_API = "https://nyaaapi.onrender.com/nyaa";
 
 /**
  * DownloaderService - Singleton Service for Torrent Management
- *
- * Responsibilities:
- * - Session-based authentication with qBittorrent
- * - Torrent searching via Nyaa API
- * - Torrent lifecycle management (add, status, list)
  */
 class DownloaderService {
   private sid: string | null = null;
-
-  constructor() {
-    if (!QBIT_USER || !QBIT_PASS) {
-      console.warn(
-        "[DownloaderService] CRITICAL: Missing QBIT_USER or QBIT_PASS environment variables.",
-      );
-    }
-  }
 
   /**
    * Get or refresh qBittorrent SID
    */
   private async getAuthCookie(forceRefresh = false): Promise<string> {
     if (this.sid && !forceRefresh) return this.sid;
-
-    if (!QBIT_USER || !QBIT_PASS) {
-      throw new Error(
-        "qBittorrent credentials not configured (QBIT_USER, QBIT_PASS)",
-      );
-    }
 
     try {
       const params = new URLSearchParams();

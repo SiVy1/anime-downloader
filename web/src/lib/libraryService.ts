@@ -1,10 +1,9 @@
 import { connectDB } from "./db";
 import { Anime, Episode, IAnime, IEpisode } from "@/models/Anime";
 import { ARIA2_PATH } from "./downloader";
-import { getVideoFiles } from "./utils/filesystem";
+import { getVideoFiles, exists } from "./utils/filesystem";
 import { extractEpisodeNumber } from "./animeParser";
 import path from "path";
-import fs from "fs";
 
 /**
  * LibraryService - Handles anime library management
@@ -60,9 +59,9 @@ export async function linkFolderToAnime(
     };
   }
 
-  // 2. Verify folder exists
+  // 2. Verify folder exists (Asynchronous)
   const localDirPath = path.join(ARIA2_PATH, folderName);
-  if (!fs.existsSync(localDirPath)) {
+  if (!(await exists(localDirPath))) {
     return {
       success: false,
       linkedFolder: folderName,
@@ -76,8 +75,8 @@ export async function linkFolderToAnime(
   anime.localFolderName = folderName;
   await anime.save();
 
-  // 4. Scan folder for video files
-  const videoFiles = getVideoFiles(localDirPath);
+  // 4. Scan folder for video files (Asynchronous)
+  const videoFiles = await getVideoFiles(localDirPath);
 
   // 5. Build bulk update operations (no N+1 problem!)
   const bulkOps: Array<{

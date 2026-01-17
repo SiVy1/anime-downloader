@@ -36,16 +36,16 @@ describe("getAllFiles", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("should return all files recursively", () => {
-    const files = getAllFiles(tempDir);
+  it("should return all files recursively", async () => {
+    const files = await getAllFiles(tempDir);
     expect(files).toHaveLength(3);
     expect(files.some((f) => f.includes("file1.txt"))).toBe(true);
     expect(files.some((f) => f.includes("file2.mkv"))).toBe(true);
     expect(files.some((f) => f.includes("file3.mp4"))).toBe(true);
   });
 
-  it("should return empty array for non-existent directory", () => {
-    const files = getAllFiles("/non-existent-path-12345");
+  it("should return empty array for non-existent directory", async () => {
+    const files = await getAllFiles("/non-existent-path-12345");
     expect(files).toEqual([]);
   });
 });
@@ -65,20 +65,20 @@ describe("getVideoFiles", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("should return only video files", () => {
-    const videos = getVideoFiles(tempDir);
+  it("should return only video files", async () => {
+    const videos = await getVideoFiles(tempDir);
     expect(videos).toHaveLength(3);
     expect(videos.every((f) => /\.(mkv|mp4|avi|mov)$/i.test(f))).toBe(true);
   });
 
-  it("should return relative paths with forward slashes", () => {
-    const videos = getVideoFiles(tempDir);
+  it("should return relative paths with forward slashes", async () => {
+    const videos = await getVideoFiles(tempDir);
     expect(videos.some((f) => f.includes("subdir/episode3.avi"))).toBe(true);
     expect(videos.every((f) => !f.includes("\\"))).toBe(true);
   });
 
-  it("should return files sorted alphabetically", () => {
-    const videos = getVideoFiles(tempDir);
+  it("should return files sorted alphabetically", async () => {
+    const videos = await getVideoFiles(tempDir);
     const sorted = [...videos].sort();
     expect(videos).toEqual(sorted);
   });

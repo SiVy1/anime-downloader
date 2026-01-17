@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 import { animeSubtitleService } from "@/lib/animeSubtitleService";
 import { polishSubtitleService } from "@/lib/polishSubtitleService";
+import env from "@/lib/env";
 
 const OPENSUBTITLES_API_URL = "https://api.opensubtitles.com/api/v1";
 
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
 
   // --- Source 3: OpenSubtitles (Generic) ---
-  const apiKey = process.env.OPENSUBTITLES_API_KEY;
+  const apiKey = env.subtitles.openSubtitlesKey;
   if (apiKey) {
     try {
       const response = await axios.get(`${OPENSUBTITLES_API_URL}/subtitles`, {
