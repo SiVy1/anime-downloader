@@ -57,12 +57,13 @@ export async function GET(
     // Helper to extract episode number from filename
     const extractEpisodeNumber = (filename: string): number | null => {
       const cleanName = filename.split("/").pop() || "";
+      // Updated patterns to handle version suffixes (v2, v3, etc.)
       const match =
         cleanName.match(/[Ee](\d+)/) ||
         cleanName.match(/Ep\s*(\d+)/i) ||
-        cleanName.match(/\s-\s(\d+)/) ||
+        cleanName.match(/\s-\s(\d+)(?:v\d+)?/) || // Handle " - 03v2" format
         cleanName.match(/\[(\d+)\]/) ||
-        cleanName.match(/\b(\d{1,3})\b/);
+        cleanName.match(/\b(\d{1,3})(?:v\d+)?\b/); // Handle standalone numbers with version
 
       return match ? parseInt(match[1], 10) : null;
     };

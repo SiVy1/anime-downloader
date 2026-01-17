@@ -16,7 +16,17 @@ export async function POST(
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    // Handle empty body (toggle mode) or explicit watched value
+    let body: { watched?: boolean } = {};
+    try {
+      const text = await req.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      // Empty body is fine - will use toggle mode
+    }
+
     const { watched } = body;
 
     if (typeof watched === "boolean") {
