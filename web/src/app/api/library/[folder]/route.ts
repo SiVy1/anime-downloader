@@ -83,6 +83,9 @@ export async function GET(
         dbEpisodes.map(async (ep) => {
           const matchingFile = localFiles.find((f) => {
             const epNum = extractEpisodeNumber(f);
+            console.log(
+              `[Library Debug] File: ${f}, Extracted: ${epNum}, Looking for: ${ep.number}`,
+            );
             return epNum === ep.number;
           });
 
