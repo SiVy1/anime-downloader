@@ -812,31 +812,30 @@ export default function WatchPage() {
                             Live Streaming
                           </span>
                         )}
+                      {ep.isDownloaded && ep.localPath?.split("/").pop()}
                       {!ep.isDownloaded && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            searchTorrentsForEpisode(ep);
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 rounded text-[8px] font-black text-white uppercase tracking-tighter transition-all"
-                        >
-                          <Download className="w-2 h-2" />
-                          Szukaj i Oglądaj
-                        </button>
+                        <span className="text-white/20 italic">
+                          Nie pobrano
+                        </span>
                       )}
-                      {ep.isDownloaded && ep.localPath.split("/").pop()}
                     </p>
                   </div>
+                  {/* Right side action */}
                   {currentFile === ep.localPath ? (
                     <Play className="w-4 h-4 text-white fill-white" />
                   ) : !ep.isDownloaded ? (
-                    <Download
+                    <button
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         searchTorrentsForEpisode(ep);
                       }}
-                      className="w-4 h-4 text-blue-500 cursor-pointer hover:text-blue-400 transition-colors"
-                    />
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-[9px] font-black text-white uppercase tracking-wide transition-all shadow-md"
+                    >
+                      <Download className="w-3 h-3" />
+                      Pobierz
+                    </button>
+                  ) : ep.watched ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
                   ) : (
                     <ChevronRight className="w-4 h-4 text-white/20 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   )}
