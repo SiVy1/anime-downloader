@@ -1,46 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import { Episode } from "@/models/Anime";
+import { toggleEpisodeWatched } from "@/lib/episodeService";
 
+/**
+ * POST /api/episodes/[id]/watch
+ *
+ * Toggle or set episode watched status.
+ * Thin controller - delegates to EpisodeService.
+ */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
+  const { id: episodeId } = await params;
+
+  // Parse optional body for explicit watched value
+  let watchedState: boolean | undefined;
+  try {
+    const text = await req.text();
+    if (text) {
+      const body = JSON.parse(text);
+      watchedState = body.watched;
+    }
+  } catch {
+    // Empty body is fine - will use toggle mode
+  }
 
   try {
-    await connectDB();
-    const episode = await Episode.findById(id);
+    // Service handles all business logic
+    const result = await toggleEpisodeWatched(episodeId, watchedState);
 
-    if (!episode) {
-      return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 404 });
     }
 
-    // Handle empty body (toggle mode) or explicit watched value
-    let body: { watched?: boolean } = {};
-    try {
-      const text = await req.text();
-      if (text) {
-        body = JSON.parse(text);
-      }
-    } catch {
-      // Empty body is fine - will use toggle mode
-    }
-
-    const { watched } = body;
-
-    if (typeof watched === "boolean") {
-      episode.watched = watched;
-      await episode.save();
-    } else {
-      // Toggle
-      episode.watched = !episode.watched;
-      await episode.save();
-    }
-
-    return NextResponse.json({ success: true, watched: episode.watched });
-  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      watched: result.watched,
+    });
+  } catch (error) {
     console.error("[Watch Toggle API] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update watch status" },
+      { status: 500 },
+    );
   }
 }
