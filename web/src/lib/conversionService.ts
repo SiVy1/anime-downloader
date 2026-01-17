@@ -83,6 +83,19 @@ export async function convertMkvToMp4(
     return { success: false, error: `Cannot create directory: ${outputDir}` };
   }
 
+  // Test read permission for input file
+  try {
+    fs.accessSync(inputPath, fs.constants.R_OK);
+  } catch (err: any) {
+    console.error(
+      `[CONVERT PERMISSION ERROR] Cannot read input file ${inputPath}: ${err.message}`,
+    );
+    return {
+      success: false,
+      error: `Brak uprawnień do pliku (własność root?): ${path.basename(inputPath)}`,
+    };
+  }
+
   // Probe file for codecs
   const metadata: any = await new Promise((resolve, reject) => {
     ffmpeg.ffprobe(inputPath, (err, data) => {

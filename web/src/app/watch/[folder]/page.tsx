@@ -298,7 +298,7 @@ export default function WatchPage() {
         {/* Main Content Area */}
         <div className="lg:col-span-3 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
           {/* Vidstack Video Player */}
-          <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black">
+          <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto">
             {currentFile ? (
               <MediaPlayer
                 ref={player}
@@ -334,7 +334,6 @@ export default function WatchPage() {
                     />
                   ))}
                 </MediaProvider>
-                <Captions />
                 <DefaultVideoLayout icons={defaultLayoutIcons} />
               </MediaPlayer>
             ) : (
