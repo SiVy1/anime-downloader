@@ -25,9 +25,6 @@ import {
   defaultLayoutIcons,
 } from "@vidstack/react/player/layouts/default";
 
-// JASSUB for native ASS subtitle rendering with styling
-import JASSUBRenderer from "./JASSUBRenderer";
-
 export default function WatchPage() {
   const { folder } = useParams();
   const decodedFolder = decodeURIComponent(folder as string);
@@ -40,8 +37,6 @@ export default function WatchPage() {
   const [subtitles, setSubtitles] = useState<any[]>([]);
   const [internalSubs, setInternalSubs] = useState<any[]>([]);
   const [activeSub, setActiveSub] = useState<string | null>(null);
-  // Active ASS subtitle URL for JASSUB rendering (preserves styling)
-  const [activeAssSub, setActiveAssSub] = useState<string | null>(null);
   const [isSearchingSubs, setIsSearchingSubs] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
 
@@ -181,23 +176,19 @@ export default function WatchPage() {
                       default
                     />
                   )}
-                  {/* Napisy wewnętrzne (z pliku MKV) - tylko nie-ASS */}
-                  {internalSubs
-                    .filter((sub) => !sub.isASS)
-                    .map((sub) => (
-                      <Track
-                        key={`${currentFile}-${sub.localIndex}`}
-                        src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
-                        label={`${sub.title} [${sub.language}]`}
-                        kind="subtitles"
-                        type="vtt"
-                        lang={sub.language}
-                      />
-                    ))}
+                  {/* Napisy wewnętrzne (z pliku MKV) */}
+                  {internalSubs.map((sub) => (
+                    <Track
+                      key={`${currentFile}-${sub.localIndex}`}
+                      src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
+                      label={`${sub.title} [${sub.language}]`}
+                      kind="subtitles"
+                      type="vtt"
+                      lang={sub.language}
+                    />
+                  ))}
                 </MediaProvider>
                 <DefaultVideoLayout icons={defaultLayoutIcons} />
-                {/* JASSUB renderer for ASS subtitles with native styling */}
-                {activeAssSub && <JASSUBRenderer subtitleUrl={activeAssSub} />}
               </MediaPlayer>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-white/5 to-transparent">
@@ -289,7 +280,6 @@ export default function WatchPage() {
                   onClick={() => {
                     setCurrentFile(file);
                     setActiveSub(null); // Resetuj napisy przy zmianie odcinka
-                    setActiveAssSub(null); // Resetuj ASS napisy przy zmianie odcinka
                   }}
                   className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all text-left relative overflow-hidden ${
                     currentFile === file
