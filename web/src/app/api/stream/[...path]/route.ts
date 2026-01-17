@@ -20,15 +20,28 @@ export async function GET(
 
   const fullPath = path.join(ARIA2_PATH, filePath);
 
-  if (!fs.existsSync(fullPath)) {
+  // Check if MKV file was converted to MP4 - serve the MP4 instead
+  let actualPath = fullPath;
+  let actualExt = path.extname(fullPath).toLowerCase();
+
+  if (actualExt === ".mkv") {
+    const mp4Path = fullPath.replace(/\.mkv$/i, ".mp4");
+    if (fs.existsSync(mp4Path)) {
+      console.log(`[STREAM] Serving converted MP4 instead of MKV: ${filePath}`);
+      actualPath = mp4Path;
+      actualExt = ".mp4";
+    }
+  }
+
+  if (!fs.existsSync(actualPath)) {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
-  const ext = path.extname(fullPath).toLowerCase();
+  const ext = actualExt;
 
   // Serve all video files directly with Range support
   // MKV/HEVC works natively in Edge and Safari, Chrome may need HEVC extension
-  const stat = fs.statSync(fullPath);
+  const stat = fs.statSync(actualPath);
   const fileSize = stat.size;
   const range = req.headers.get("range");
 
@@ -55,7 +68,7 @@ export async function GET(
     }
 
     const chunksize = end - start + 1;
-    const stream = fs.createReadStream(fullPath, { start, end });
+    const stream = fs.createReadStream(actualPath, { start, end });
 
     return new NextResponse(stream as any, {
       status: 206,
@@ -67,7 +80,7 @@ export async function GET(
       },
     });
   } else {
-    const stream = fs.createReadStream(fullPath);
+    const stream = fs.createReadStream(actualPath);
     return new NextResponse(stream as any, {
       headers: {
         "Content-Length": fileSize.toString(),

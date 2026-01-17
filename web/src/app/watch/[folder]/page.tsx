@@ -12,6 +12,8 @@ import {
   Search,
   Download,
   CheckCircle2,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -45,6 +47,11 @@ export default function WatchPage() {
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [isSearchingSubs, setIsSearchingSubs] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
+
+  // Conversion state
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertProgress, setConvertProgress] = useState(0);
+  const [isConverted, setIsConverted] = useState(false);
 
   const player = useRef<any>(null);
 
@@ -129,6 +136,60 @@ export default function WatchPage() {
     const subUrl = `/api/subtitles/download?file_id=${sub.attributes.files[0].file_id}`;
     setActiveSub(subUrl);
     setShowSubModal(false);
+  };
+
+  // Start MKV to MP4 conversion
+  const startConversion = async () => {
+    if (!currentFile || !currentFile.toLowerCase().endsWith(".mkv")) return;
+
+    setIsConverting(true);
+    setConvertProgress(0);
+
+    try {
+      // Start conversion
+      const res = await fetch(
+        `/api/convert/${folder}/${encodeURIComponent(currentFile)}`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+
+      if (data.status === "completed") {
+        setIsConverted(true);
+        setIsConverting(false);
+        // Reload the page to use converted file
+        window.location.reload();
+        return;
+      }
+
+      // Poll for progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(
+            `/api/convert/${folder}/${encodeURIComponent(currentFile)}`,
+          );
+          const statusData = await statusRes.json();
+
+          setConvertProgress(statusData.progress || 0);
+
+          if (statusData.status === "completed") {
+            clearInterval(pollInterval);
+            setIsConverting(false);
+            setIsConverted(true);
+            // Reload to use converted file
+            window.location.reload();
+          } else if (statusData.status === "not_started") {
+            // Conversion failed or was cancelled
+            clearInterval(pollInterval);
+            setIsConverting(false);
+          }
+        } catch (err) {
+          console.error("Conversion status error:", err);
+        }
+      }, 2000); // Poll every 2 seconds
+    } catch (err) {
+      console.error("Conversion error:", err);
+      setIsConverting(false);
+    }
   };
 
   return (
@@ -292,21 +353,71 @@ export default function WatchPage() {
                 <Settings className="w-5 h-5 text-blue-500" />
                 Informacje o strumieniu
               </h2>
-              <p className="text-white/50 text-xs leading-relaxed">
-                Jeśli plik jest w formacie MKV, system automatycznie transkoduje
-                go w locie przy użyciu FFmpeg (preset ultrafast). Pozwala to na
-                płynne odtwarzanie bez potrzeby wstępnej konwersji całego pliku.
-              </p>
-              <div className="mt-4 flex gap-2">
-                <span className="px-2 py-1 bg-white/5 rounded-md text-[10px] font-bold text-white/40 border border-white/5">
-                  AAC Audio
-                </span>
-                <span className="px-2 py-1 bg-white/5 rounded-md text-[10px] font-bold text-white/40 border border-white/5">
-                  H.264 Video
-                </span>
-                <span className="px-2 py-1 bg-green-500/10 rounded-md text-[10px] font-bold text-green-500 border border-green-500/20">
-                  FFmpeg active
-                </span>
+              <div className="space-y-4">
+                <p className="text-white/50 text-xs leading-relaxed">
+                  Dla najlepszej jakości i obsługi przewijania, pliki MKV
+                  powinny zostać skonwertowane do formatu MP4. System może to
+                  zrobić automatycznie.
+                </p>
+
+                {currentFile?.toLowerCase().endsWith(".mkv") && (
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Disc
+                          className={`w-4 h-4 ${isConverting ? "text-blue-500 animate-spin" : "text-white/40"}`}
+                        />
+                        <span className="text-xs font-bold text-white/70">
+                          Konwersja MKV → MP4
+                        </span>
+                      </div>
+                      {isConverted && (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" /> Gotowe
+                        </span>
+                      )}
+                    </div>
+
+                    {isConverting ? (
+                      <div className="space-y-2">
+                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 transition-all duration-500"
+                            style={{ width: `${convertProgress}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] font-medium text-white/30">
+                          <span>Przetwarzanie pliku...</span>
+                          <span>{Math.round(convertProgress)}%</span>
+                        </div>
+                      </div>
+                    ) : (
+                      !isConverted && (
+                        <button
+                          onClick={startConversion}
+                          className="w-full py-2 bg-blue-500 hover:bg-blue-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Konwertuj teraz
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <span className="px-2 py-1 bg-white/5 rounded-md text-[10px] font-bold text-white/40 border border-white/5">
+                    AAC Audio
+                  </span>
+                  <span className="px-2 py-1 bg-white/5 rounded-md text-[10px] font-bold text-white/40 border border-white/5">
+                    H.264 Video
+                  </span>
+                  {currentFile?.toLowerCase().endsWith(".mp4") && (
+                    <span className="px-2 py-1 bg-green-500/10 rounded-md text-[10px] font-bold text-green-500 border border-green-500/20">
+                      Native Playback
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
