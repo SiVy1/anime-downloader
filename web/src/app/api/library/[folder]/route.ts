@@ -10,24 +10,22 @@ export async function GET(
   { params }: { params: Promise<{ folder: string }> },
 ) {
   const { folder } = await params;
+  const decodedFolder = decodeURIComponent(folder);
   const downloadingFiles = await getAllDownloadingFiles();
-  if (!ARIA2_PATH) {
-    return NextResponse.json(
-      { error: "ARIA2_PATH not configured" },
-      { status: 500 },
-    );
-  }
 
   try {
-    const fullPath = path.join(ARIA2_PATH, folder);
-    if (!fs.existsSync(fullPath)) {
-      return NextResponse.json({ error: "Folder not found" }, { status: 404 });
-    }
-
     await connectDB();
-    const anime = await Anime.findOne({ localFolderName: folder });
 
+    // 1. Try to find anime in database by folder name
+    const anime = await Anime.findOne({ localFolderName: decodedFolder });
+
+    // 2. Check if local folder exists
+    const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, decodedFolder) : null;
+    const folderExists = fullPath && fs.existsSync(fullPath);
+
+    // Helper to get all video files from folder
     const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []) => {
+      if (!fs.existsSync(dirPath)) return arrayOfFiles;
       const files = fs.readdirSync(dirPath, { withFileTypes: true });
 
       files.forEach((file) => {
@@ -40,7 +38,7 @@ export async function GET(
           const ext = path.extname(file.name).toLowerCase();
           if ([".mkv", ".mp4", ".avi", ".mov"].includes(ext)) {
             const relativePath = path
-              .relative(fullPath, path.join(dirPath, file.name))
+              .relative(dirPath, path.join(dirPath, file.name))
               .replace(/\\/g, "/");
             arrayOfFiles.push(relativePath);
           }
@@ -50,11 +48,9 @@ export async function GET(
       return arrayOfFiles;
     };
 
-    const localFiles = getAllFiles(fullPath).sort();
+    const localFiles = folderExists ? getAllFiles(fullPath!).sort() : [];
 
-    /**
-     * Helper to extract episode number from filename
-     */
+    // Helper to extract episode number from filename
     const extractEpisodeNumber = (filename: string): number | null => {
       const cleanName = filename.split("/").pop() || "";
       const match =
@@ -67,13 +63,13 @@ export async function GET(
       return match ? parseInt(match[1], 10) : null;
     };
 
+    // 3. If anime is in database, return episodes from DB
     if (anime) {
-      // Synchronize database episodes with local files
       const dbEpisodes = await Episode.find({ animeId: anime._id }).sort({
         number: 1,
       });
 
-      // Update episodes with local info
+      // Sync episodes with local files
       const syncedEpisodes = await Promise.all(
         dbEpisodes.map(async (ep) => {
           const matchingFile = localFiles.find((f) => {
@@ -90,7 +86,6 @@ export async function GET(
             await ep.save();
           } else if (!matchingFile && ep.isDownloaded) {
             ep.isDownloaded = false;
-            // ep.localPath = undefined; // Optional: keep for history?
             await ep.save();
           }
           return ep;
@@ -100,12 +95,24 @@ export async function GET(
       return NextResponse.json({
         anime,
         episodes: syncedEpisodes,
+        files: localFiles,
         downloadingFiles,
       });
     }
 
-    // Fallback if not in DB: return just file list as pseudo-episodes
-    return NextResponse.json({ files: localFiles, downloadingFiles });
+    // 4. If no anime in DB but folder exists, return just files
+    if (folderExists && localFiles.length > 0) {
+      return NextResponse.json({ files: localFiles, downloadingFiles });
+    }
+
+    // 5. Neither DB entry nor local folder - try to find by title search
+    // This allows streaming even without folder linked
+    return NextResponse.json({
+      files: [],
+      episodes: [],
+      downloadingFiles,
+      message: "No anime linked to this folder. Add to library first.",
+    });
   } catch (error: any) {
     console.error("[Library Folder API] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

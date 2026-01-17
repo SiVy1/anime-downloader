@@ -315,9 +315,12 @@ export default function WatchPage() {
     setIsSearchingTorrents(true);
     setTorrentResults([]);
 
+    // Use anime title from DB, Jikan, or folder name as fallback
+    const title = anime?.title || animeInfo?.title || decodedFolder;
+
     try {
       const res = await fetch(
-        `/api/downloader/search-episode?title=${encodeURIComponent(animeInfo?.title || "")}&episode=${episode.number}`,
+        `/api/downloader/search-episode?title=${encodeURIComponent(title)}&episode=${episode.number}`,
       );
       const data = await res.json();
       setTorrentResults(data.results || []);
