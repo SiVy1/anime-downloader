@@ -69,7 +69,7 @@ class AutoConverter {
 
           // Check if already converted or in queue
           if (
-            !hasConvertedVersion(mkvPath) &&
+            !(await hasConvertedVersion(mkvPath)) &&
             !this.queue.includes(relativePath)
           ) {
             console.log(`[AUTO-CONVERT] Found finished MKV: ${relativePath}`);

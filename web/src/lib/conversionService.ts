@@ -1,6 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
+import { promises as fsp } from "fs";
 import os from "os";
 import { ARIA2_PATH } from "./downloader";
 import { FFprobeMetadata, FFprobeStream } from "./types/ffprobe";
@@ -30,9 +31,14 @@ export function getMp4Path(mkvPath: string): string {
 /**
  * Check if a converted MP4 version exists
  */
-export function hasConvertedVersion(mkvPath: string): boolean {
+export async function hasConvertedVersion(mkvPath: string): Promise<boolean> {
   const mp4Path = getMp4Path(mkvPath);
-  return fs.existsSync(mp4Path);
+  try {
+    await fsp.access(mp4Path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -76,8 +82,13 @@ export async function convertMkvToMp4(
   // Ensure output directory exists
   const outputDir = path.dirname(outputPath);
   try {
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+    if (
+      !(await fsp
+        .access(outputDir)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      await fsp.mkdir(outputDir, { recursive: true });
     }
   } catch (err: any) {
     console.error(`[CONVERT DIR ERROR] ${err.message}`);
@@ -86,7 +97,7 @@ export async function convertMkvToMp4(
 
   // Test read permission for input file
   try {
-    fs.accessSync(inputPath, fs.constants.R_OK);
+    await fsp.access(inputPath, fs.constants.R_OK);
   } catch (err: any) {
     console.error(
       `[CONVERT PERMISSION ERROR] Cannot read input file ${inputPath}: ${err.message}`,
@@ -169,15 +180,29 @@ export async function convertMkvToMp4(
         }
         resolve({ success: false, error: err.message });
       })
-      .on("end", () => {
+      .on("end", async () => {
         console.log(`[CONVERT] Completed: ${relativePath}`);
         activeConversions.delete(inputPath);
-        if (fs.existsSync(tempPath)) {
-          fs.renameSync(tempPath, outputPath);
-        }
-        if (fs.existsSync(inputPath)) {
-          fs.unlinkSync(inputPath);
-          console.log(`[CONVERT] Deleted original MKV: ${inputPath}`);
+        try {
+          if (
+            await fsp
+              .access(tempPath)
+              .then(() => true)
+              .catch(() => false)
+          ) {
+            await fsp.rename(tempPath, outputPath);
+          }
+          if (
+            await fsp
+              .access(inputPath)
+              .then(() => true)
+              .catch(() => false)
+          ) {
+            await fsp.unlink(inputPath);
+            console.log(`[CONVERT] Deleted original MKV: ${inputPath}`);
+          }
+        } catch (err) {
+          console.error(`[CONVERT CLEANUP ERROR]`, err);
         }
         resolve({ success: true, outputPath });
       });

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
+import { promises as fsp } from "fs";
 import { ARIA2_PATH } from "@/lib/downloader";
 import { autoConverter } from "@/lib/autoConverter";
+import { exists } from "@/lib/utils/filesystem";
 import { connectDB } from "@/lib/db";
 import { Anime } from "@/models/Anime";
 
@@ -17,8 +19,8 @@ export async function GET() {
 
     // 2. Get folders from disk (for linking purposes)
     let diskFolders: string[] = [];
-    if (ARIA2_PATH && fs.existsSync(ARIA2_PATH)) {
-      const items = fs.readdirSync(ARIA2_PATH, { withFileTypes: true });
+    if (ARIA2_PATH && (await exists(ARIA2_PATH))) {
+      const items = await fsp.readdir(ARIA2_PATH, { withFileTypes: true });
       diskFolders = items
         .filter((item) => item.isDirectory())
         .map((item) => item.name);

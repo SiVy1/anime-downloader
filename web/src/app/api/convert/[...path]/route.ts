@@ -27,7 +27,7 @@ export async function POST(
   }
 
   // Check if already converted
-  if (hasConvertedVersion(filePath)) {
+  if (await hasConvertedVersion(filePath)) {
     return NextResponse.json({
       status: "completed",
       message: "File already converted",
@@ -73,7 +73,7 @@ export async function GET(
   const filePath = pathSegments.join("/");
 
   // Check if already converted
-  if (hasConvertedVersion(filePath)) {
+  if (await hasConvertedVersion(filePath)) {
     return NextResponse.json({
       status: "completed",
       progress: 100,
