@@ -19,13 +19,7 @@ import axios, { AxiosError } from "axios";
 // TYPES & INTERFACES
 // =============================================================================
 
-/** Parsed file metadata from anitomy */
-export interface ParsedAnimeFile {
-  anime_title: string;
-  episode_number: string | null;
-  release_group: string | null;
-  video_resolution: string | null;
-}
+import { parseAnimeFilename, ParsedAnimeFile } from "./animeParser";
 
 /** Single attachment from Anime Tosho entry */
 export interface AnimeToshoAttachment {
@@ -213,7 +207,7 @@ export class AnimeSubtitleService {
   public async findSubtitles(filename: string): Promise<SubtitleResult | null> {
     try {
       // Step 1: Parse filename semantically
-      const parsed = await this.parseFilename(filename);
+      const parsed = await parseAnimeFilename(filename);
       console.log("[AnimeSubtitleService] Parsed file:", parsed);
 
       if (!parsed.anime_title) {
@@ -285,27 +279,6 @@ export class AnimeSubtitleService {
       console.error("[AnimeSubtitleService] Error finding subtitles:", error);
       return null;
     }
-  }
-
-  /**
-   * Step 1: Parse anime filename using anitomyscript
-   * Extracts structured metadata from typical anime release filenames
-   */
-  private async parseFilename(filename: string): Promise<ParsedAnimeFile> {
-    // Dynamic import for anitomyscript (ESM module, default export)
-    const anitomyscript = await import("anitomyscript");
-    const parse = anitomyscript.default;
-
-    const result = await parse(filename);
-    // parse() returns AnitomyResult | AnitomyResult[] - for single input it's AnitomyResult
-    const parsed = Array.isArray(result) ? result[0] : result;
-
-    return {
-      anime_title: parsed.anime_title || "",
-      episode_number: parsed.episode_number || null,
-      release_group: parsed.release_group || null,
-      video_resolution: parsed.video_resolution || null,
-    };
   }
 
   /**

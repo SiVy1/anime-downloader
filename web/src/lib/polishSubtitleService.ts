@@ -1,5 +1,6 @@
 import axios from "axios";
 import { animeSubtitleService, SubtitleResult } from "./animeSubtitleService";
+import { parseAnimeFilename } from "./animeParser";
 
 /**
  * PolishSubtitleService - Integration with animesub.info
@@ -25,10 +26,8 @@ export class PolishSubtitleService {
     filename: string,
   ): Promise<SubtitleResult[]> {
     try {
-      // Use existing anitomy parser from animeSubtitleService
-      const parsed = await (animeSubtitleService as any).parseFilename(
-        filename,
-      );
+      // Use centralized robust parser
+      const parsed = await parseAnimeFilename(filename);
       if (!parsed.anime_title) return [];
 
       console.log(
