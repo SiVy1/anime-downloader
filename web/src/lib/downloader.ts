@@ -1,11 +1,35 @@
 import axios from "axios";
 import path from "path";
 
-const ARIA2_URL = process.env.ARIA2_URL || "http://localhost:6800/jsonrpc";
-const ARIA2_SECRET = process.env.ARIA2_SECRET || "TWOJE_HASLO";
+const QBIT_URL = process.env.QBIT_URL || "http://localhost:8080";
+const QBIT_USER = process.env.QBIT_USER || "admin";
+const QBIT_PASS = process.env.QBIT_PASS || "adminadmin";
 export const ARIA2_PATH = process.env.ARIA2_PATH || "";
 
 const NYAA_API = "https://nyaaapi.onrender.com/nyaa";
+
+// Helper to extract info hash from magnet link
+function getHashFromMagnet(magnet: string): string | null {
+  const match = magnet.match(/xt=urn:btih:([a-z0-9]+)/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+/**
+ * qBittorrent Authentication
+ */
+async function qbitLogin() {
+  const params = new URLSearchParams();
+  params.append("username", QBIT_USER);
+  params.append("password", QBIT_PASS);
+
+  const res = await axios.post(`${QBIT_URL}/api/v2/auth/login`, params, {
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  });
+
+  // Extract SID from cookie
+  const cookie = res.headers["set-cookie"];
+  return cookie ? cookie[0].split(";")[0] : "";
+}
 
 export async function searchNyaa(
   query: string,
@@ -93,65 +117,77 @@ export async function searchNyaa(
   }
 }
 
-export async function addToAria2(
-  magnetLinks: string[],
-  subfolder: string = "",
-) {
+/**
+ * Add torrent to qBittorrent
+ */
+export async function addToQBit(magnetLinks: string[], subfolder: string = "") {
   const targetDir = path.join(ARIA2_PATH, subfolder).replace(/\\/g, "/");
-  const gids: string[] = [];
+  const hashes: string[] = [];
 
   try {
+    const sid = await qbitLogin();
+
     for (const magnet of magnetLinks) {
-      const jsonReq = {
-        jsonrpc: "2.0",
-        id: "anime-downloader",
-        method: "aria2.addUri",
-        params: [`token:${ARIA2_SECRET}`, [magnet], { dir: targetDir }],
-      };
-      const res = await axios.post(ARIA2_URL, jsonReq);
-      if (res.data.error) {
-        console.error("Błąd Aria2:", res.data.error.message);
-        return null;
-      }
-      gids.push(res.data.result);
+      const params = new URLSearchParams();
+      params.append("urls", magnet);
+      params.append("savepath", targetDir);
+
+      await axios.post(`${QBIT_URL}/api/v2/torrents/add`, params, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: sid,
+        },
+      });
+
+      const hash = getHashFromMagnet(magnet);
+      if (hash) hashes.push(hash);
     }
-    return gids;
+    return hashes;
   } catch (error: any) {
-    console.error("Błąd podczas połączenia z Aria2:", error.message);
+    console.error("Błąd podczas połączenia z qBittorrent:", error.message);
     return null;
   }
 }
 
-export async function getAria2Status(gid: string) {
+/**
+ * Get qBittorrent status for a hash
+ */
+export async function getQBitStatus(hash: string) {
   try {
-    const jsonReq = {
-      jsonrpc: "2.0",
-      id: "status",
-      method: "aria2.tellStatus",
-      params: [`token:${ARIA2_SECRET}`, gid],
-    };
-    const response = await axios.post(ARIA2_URL, jsonReq);
-    if (response.data.error) {
-      return { error: response.data.error.message };
+    const sid = await qbitLogin();
+    const res = await axios.get(`${QBIT_URL}/api/v2/torrents/info`, {
+      params: { hashes: hash },
+      headers: { Cookie: sid },
+    });
+
+    if (!res.data || res.data.length === 0) {
+      return { error: "Torrent not found" };
     }
 
-    const s = response.data.result;
-    const progress =
-      s.totalLength > 0
-        ? ((s.completedLength / s.totalLength) * 100).toFixed(1)
-        : "0";
-    const downloadSpeed = (s.downloadSpeed / 1024 / 1024).toFixed(2); // MB/s
+    const t = res.data[0];
+
+    // Map qBittorrent status to our format
+    // statuses: downloading, seeding, stalledDL, stalledUP, metaDL, pausedDL, completed, error
+    let status = "active";
+    if (t.progress >= 1) status = "complete";
+    if (t.state.includes("paused") || t.state.includes("stalled"))
+      status = "waiting";
+    if (t.state.includes("error")) status = "error";
 
     return {
-      status: s.status, // active, waiting, paused, error, complete
-      progress: progress,
-      speed: downloadSpeed,
-      total: (s.totalLength / 1024 / 1024).toFixed(2),
-      completed: (s.completedLength / 1024 / 1024).toFixed(2),
-      dir: s.dir,
-      files: s.files,
+      status: status,
+      progress: (t.progress * 100).toFixed(1),
+      speed: (t.dlspeed / 1024 / 1024).toFixed(2), // MB/s
+      total: (t.size / 1024 / 1024).toFixed(2),
+      completed: ((t.size * t.progress) / 1024 / 1024).toFixed(2),
+      dir: t.save_path,
+      name: t.name,
     };
   } catch (error: any) {
     return { error: error.message };
   }
 }
+
+// Keep Aria2 functions as helpers if needed for transitional period
+export const addToAria2 = addToQBit;
+export const getAria2Status = getQBitStatus;
