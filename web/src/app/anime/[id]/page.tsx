@@ -35,6 +35,7 @@ export default function AnimeDetailPage() {
   const [torrentResults, setTorrentResults] = useState<any[]>([]);
   const [isSearchingTorrents, setIsSearchingTorrents] = useState(false);
   const [downloadingHash, setDownloadingHash] = useState<string | null>(null);
+  const [isAddingToLibrary, setIsAddingToLibrary] = useState(false);
 
   const fetchAnimeData = async () => {
     try {
@@ -53,6 +54,23 @@ export default function AnimeDetailPage() {
   useEffect(() => {
     if (id) fetchAnimeData();
   }, [id]);
+
+  const addToLibrary = async () => {
+    setIsAddingToLibrary(true);
+    try {
+      const res = await fetch(`/api/anime/${id}/add`, {
+        method: "POST",
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        fetchAnimeData(); // Refresh to see updated status
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAddingToLibrary(false);
+    }
+  };
 
   const openLinkModal = async () => {
     setShowLinkModal(true);
@@ -243,16 +261,41 @@ export default function AnimeDetailPage() {
 
               <div className="flex items-center gap-4">
                 {/* Action Buttons */}
-                <button className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group">
-                  <Play className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
-                  Zacznij oglądać
-                </button>
-                <button
-                  onClick={() => openLinkModal()}
-                  className="flex items-center gap-3 px-8 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all border border-white/5"
-                >
-                  Dodaj do biblioteki
-                </button>
+                {data.anime.localFolderName ? (
+                  <Link
+                    href={`/watch/${encodeURIComponent(data.anime.localFolderName)}`}
+                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group"
+                  >
+                    <Play className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
+                    Oglądaj
+                  </Link>
+                ) : data.anime._id ? (
+                  <button
+                    onClick={() => openLinkModal()}
+                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group"
+                  >
+                    <Play className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
+                    Powiąż folder i oglądaj
+                  </button>
+                ) : (
+                  <button
+                    disabled={isAddingToLibrary}
+                    onClick={() => addToLibrary()}
+                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 group disabled:opacity-50"
+                  >
+                    {isAddingToLibrary ? (
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    )}
+                    {isAddingToLibrary ? "Dodawanie..." : "Dodaj do biblioteki"}
+                  </button>
+                )}
+                {data.anime._id && !data.anime.localFolderName && (
+                  <span className="text-[10px] text-green-500 font-black uppercase tracking-widest flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3" />W Bibliotece
+                  </span>
+                )}
               </div>
             </div>
           </div>

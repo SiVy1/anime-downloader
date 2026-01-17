@@ -7,6 +7,8 @@ import { getRedis } from "./db";
 export interface JikanAnime {
   mal_id: number;
   title: string;
+  title_english?: string;
+  title_japanese?: string;
   images: {
     jpg: {
       image_url: string;
