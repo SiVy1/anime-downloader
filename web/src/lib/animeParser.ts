@@ -15,16 +15,28 @@ export interface ParsedAnimeFile {
 
 /**
  * Parses anime filename with WASM-based Anitomy, falling back to regex on error.
+ * Bypasses WASM if SKIP_ANITOMY_WASM environment variable is set.
  */
 export async function parseAnimeFilename(
   filename: string,
 ): Promise<ParsedAnimeFile> {
   const cleanFilename = filename.split("/").pop() || filename;
 
+  // Kill-switch for VPS environments where WASM crashes the entire process
+  if (process.env.SKIP_ANITOMY_WASM === "true") {
+    return simpleParseFilename(cleanFilename);
+  }
+
   try {
     // 1. Attempt using anitomyscript (WASM)
-    const anitomyscript = await import("anitomyscript");
+    // We wrap the import and execution carefully as errors here can be process-level
+    const anitomyscript = await import("anitomyscript").catch(() => null);
+    if (!anitomyscript) throw new Error("Could not import anitomyscript");
+
     const parse = anitomyscript.default;
+    if (typeof parse !== "function")
+      throw new Error("Anitomy default export is not a function");
+
     const result = await parse(cleanFilename);
     const parsed = Array.isArray(result) ? result[0] : result;
 
