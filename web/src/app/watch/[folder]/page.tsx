@@ -41,9 +41,12 @@ export default function WatchPage() {
   const { folder } = useParams();
   const decodedFolder = decodeURIComponent(folder as string);
 
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [anime, setAnime] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [files, setFiles] = useState<string[]>([]);
   const [currentFile, setCurrentFile] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   // Jikan state
   const [animeInfo, setAnimeInfo] = useState<JikanAnime | null>(null);
@@ -72,10 +75,26 @@ export default function WatchPage() {
     fetch(`/api/library/${folder}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.files) {
-          setFiles(data.files);
-          if (data.files.length > 0) setCurrentFile(data.files[0]);
+        if (data.anime) {
+          setAnime(data.anime);
+          setAnimeInfo(data.anime); // Fallback to Jikan structure
         }
+        if (data.episodes) {
+          setEpisodes(data.episodes);
+          // Set initial file if not set
+          const firstDownloaded = data.episodes.find(
+            (e: any) => e.isDownloaded,
+          );
+          if (firstDownloaded && !currentFile) {
+            setCurrentFile(firstDownloaded.localPath);
+          }
+        } else if (data.files) {
+          // Legacy fallback
+          setFiles(data.files);
+          if (data.files.length > 0 && !currentFile)
+            setCurrentFile(data.files[0]);
+        }
+
         if (data.downloadingFiles) {
           setDownloadingFiles(data.downloadingFiles);
         }
@@ -266,6 +285,24 @@ export default function WatchPage() {
     }
   };
 
+  const toggleWatched = async (episodeId: string) => {
+    try {
+      const res = await fetch(`/api/episodes/${episodeId}/watch`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEpisodes((prev) =>
+          prev.map((ep) =>
+            ep._id === episodeId ? { ...ep, watched: data.watched } : ep,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   /**
    * Helper to extract episode number from filename
    * Look for patterns like " - 01", "Ep 01", "E01", " 01 "
@@ -296,9 +333,11 @@ export default function WatchPage() {
           </Link>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span
+                className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-red-500 animate-pulse" : "bg-blue-500"}`}
+              />
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">
-                Live Stream
+                {isLiveMode ? "Live Transcoding Active" : "Sequential Stream"}
               </span>
             </div>
             <h1 className="text-sm font-bold line-clamp-1 max-w-[400px] text-white/90">
@@ -308,6 +347,19 @@ export default function WatchPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {currentIsDownloading && (
+            <button
+              onClick={() => setIsLiveMode(!isLiveMode)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-medium ${
+                isLiveMode
+                  ? "bg-red-600/30 border-red-500/50 text-red-400 hover:bg-red-600/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                  : "bg-blue-600/20 border-blue-500/50 text-blue-400 hover:bg-blue-600/30"
+              }`}
+            >
+              <MonitorPlay className="w-4 h-4" />
+              {isLiveMode ? "Disable Live Mode" : "Enable Live Mode"}
+            </button>
+          )}
           <button
             onClick={searchSubtitles}
             className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-blue-600/20 rounded-xl border border-white/5 transition-all text-sm font-medium hover:border-blue-500/50"
@@ -452,6 +504,27 @@ export default function WatchPage() {
                   {animeInfo?.episodes || "??"}
                 </span>
               </div>
+
+              {episodes.length > 0 && currentFile && (
+                <button
+                  onClick={() => {
+                    const currentEp = episodes.find(
+                      (e) => e.localPath === currentFile,
+                    );
+                    if (currentEp) toggleWatched(currentEp._id);
+                  }}
+                  className={`mt-6 w-full py-3 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                    episodes.find((e) => e.localPath === currentFile)?.watched
+                      ? "bg-green-500/20 border-green-500/30 text-green-500"
+                      : "bg-white/5 border-white/10 hover:bg-white/10 text-white/60"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {episodes.find((e) => e.localPath === currentFile)?.watched
+                    ? "Obejrzano"
+                    : "Oznacz jako obejrzane"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -578,6 +651,88 @@ export default function WatchPage() {
                   className="h-16 bg-white/5 rounded-2xl animate-pulse"
                 />
               ))
+            ) : episodes.length > 0 ? (
+              episodes.map((ep) => (
+                <button
+                  key={ep._id}
+                  disabled={!ep.isDownloaded}
+                  onClick={() => {
+                    if (ep.isDownloaded) {
+                      setCurrentFile(ep.localPath);
+                      setActiveSub(null);
+                      const isDownloading = downloadingFiles.some((df) =>
+                        df.endsWith(ep.localPath),
+                      );
+                      setIsLiveMode(isDownloading);
+                    }
+                  }}
+                  className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all text-left relative overflow-hidden ${
+                    currentFile === ep.localPath
+                      ? "bg-blue-600 border-blue-400 shadow-[0_8px_32px_rgba(37,99,235,0.3)]"
+                      : ep.isDownloaded
+                        ? "bg-[#0c0c0c] border-white/5 hover:border-white/10 hover:bg-[#121212]"
+                        : "bg-[#050505] border-white/5 opacity-50 grayscale cursor-not-allowed"
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
+                      currentFile === ep.localPath
+                        ? "bg-white text-blue-600 scale-110 shadow-lg"
+                        : "bg-white/5 text-white/40"
+                    }`}
+                  >
+                    {ep.watched ? (
+                      <CheckCircle2 className="w-5 h-5 text-blue-500 fill-blue-500" />
+                    ) : (
+                      String(ep.number).padStart(2, "0")
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-xs font-bold truncate transition-colors ${
+                        currentFile === ep.localPath
+                          ? "text-white"
+                          : "text-white/70 group-hover:text-white"
+                      }`}
+                    >
+                      {ep.number}. {ep.title || "Episode " + ep.number}
+                    </p>
+                    <p
+                      className={`text-[9px] truncate transition-colors font-medium flex items-center gap-2 ${
+                        currentFile === ep.localPath
+                          ? "text-white/60"
+                          : "text-white/30"
+                      }`}
+                    >
+                      {ep.isDownloaded &&
+                        downloadingFiles.some((df) =>
+                          df.endsWith(ep.localPath),
+                        ) && (
+                          <span className="flex items-center gap-1.5 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-400 uppercase tracking-tighter animate-pulse">
+                            <Loader2 className="w-2 h-2 animate-spin" />
+                            Live Streaming
+                          </span>
+                        )}
+                      {!ep.isDownloaded && (
+                        <span className="flex items-center gap-1 text-[8px] font-black text-white/20 uppercase tracking-tighter">
+                          <Download className="w-2 h-2" />
+                          Not Downloaded
+                        </span>
+                      )}
+                      {ep.isDownloaded
+                        ? ep.localPath.split("/").pop()
+                        : "Available Online"}
+                    </p>
+                  </div>
+                  {currentFile === ep.localPath ? (
+                    <Play className="w-4 h-4 text-white fill-white" />
+                  ) : (
+                    ep.isDownloaded && (
+                      <ChevronRight className="w-4 h-4 text-white/20 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    )
+                  )}
+                </button>
+              ))
             ) : files.length > 0 ? (
               files.map((file, index) => (
                 <button
@@ -585,6 +740,11 @@ export default function WatchPage() {
                   onClick={() => {
                     setCurrentFile(file);
                     setActiveSub(null); // Resetuj napisy przy zmianie odcinka
+                    // Auto-enable live mode for downloading files
+                    const isDownloading = downloadingFiles.some((df) =>
+                      df.endsWith(file),
+                    );
+                    setIsLiveMode(isDownloading);
                   }}
                   className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all text-left relative overflow-hidden ${
                     currentFile === file
@@ -620,10 +780,16 @@ export default function WatchPage() {
                       })()}
                     </p>
                     <p
-                      className={`text-[9px] truncate transition-colors font-medium ${
+                      className={`text-[9px] truncate transition-colors font-medium flex items-center gap-2 ${
                         currentFile === file ? "text-white/60" : "text-white/30"
                       }`}
                     >
+                      {downloadingFiles.some((df) => df.endsWith(file)) && (
+                        <span className="flex items-center gap-1.5 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-400 uppercase tracking-tighter animate-pulse">
+                          <Loader2 className="w-2 h-2 animate-spin" />
+                          Live Streaming
+                        </span>
+                      )}
                       {file.split("/").pop()}
                     </p>
                   </div>
