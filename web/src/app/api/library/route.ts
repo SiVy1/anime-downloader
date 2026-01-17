@@ -2,29 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import { ARIA2_PATH } from "@/lib/downloader";
 import { autoConverter } from "@/lib/autoConverter";
+import { connectDB } from "@/lib/db";
+import { Anime } from "@/models/Anime";
 
 export async function GET() {
   // Start background auto-converter if not already running
   autoConverter.start();
-  if (!ARIA2_PATH) {
-    return NextResponse.json(
-      { error: "ARIA2_PATH not configured" },
-      { status: 500 },
-    );
-  }
 
   try {
-    if (!fs.existsSync(ARIA2_PATH)) {
-      return NextResponse.json({ folders: [] });
+    await connectDB();
+
+    // 1. Get anime from database (primary source)
+    const dbAnime = await Anime.find({}).sort({ updatedAt: -1 });
+
+    // 2. Get folders from disk (for linking purposes)
+    let diskFolders: string[] = [];
+    if (ARIA2_PATH && fs.existsSync(ARIA2_PATH)) {
+      const items = fs.readdirSync(ARIA2_PATH, { withFileTypes: true });
+      diskFolders = items
+        .filter((item) => item.isDirectory())
+        .map((item) => item.name);
     }
 
-    const items = fs.readdirSync(ARIA2_PATH, { withFileTypes: true });
-    const folders = items
-      .filter((item) => item.isDirectory())
-      .map((item) => item.name);
+    // 3. Find unlinked folders (folders on disk not linked to any anime)
+    const linkedFolders = new Set(
+      dbAnime.map((a) => a.localFolderName).filter(Boolean),
+    );
+    const unlinkedFolders = diskFolders.filter((f) => !linkedFolders.has(f));
 
-    return NextResponse.json({ folders });
+    return NextResponse.json({
+      anime: dbAnime,
+      folders: diskFolders,
+      unlinkedFolders,
+    });
   } catch (error: any) {
+    console.error("[Library API] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

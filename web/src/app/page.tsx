@@ -1,48 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Play, Folder, Search, HardDrive, Star } from "lucide-react";
+import { Play, Folder, Search, HardDrive, Star, CloudOff } from "lucide-react";
 import Link from "next/link";
 import type { JikanAnime } from "@/lib/jikanService";
 
-function AnimeCard({ folder }: { folder: string }) {
-  const [anime, setAnime] = useState<JikanAnime | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        const res = await fetch(
-          `/api/anime/search?q=${encodeURIComponent(folder)}`,
-        );
-        const data = await res.json();
-        if (data.results && data.results.length > 0) {
-          setAnime(data.results[0]);
-        }
-      } catch (err) {
-        console.error("Card metadata fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMetadata();
-  }, [folder]);
+// Card for database anime (has full metadata)
+function DbAnimeCard({ anime }: { anime: any }) {
+  const hasFolder = !!anime.localFolderName;
+  const href = hasFolder
+    ? `/watch/${encodeURIComponent(anime.localFolderName)}`
+    : `/anime/${anime.malId}`;
 
   return (
-    <Link
-      href={`/watch/${encodeURIComponent(folder)}`}
-      className="group relative flex flex-col h-full"
-    >
+    <Link href={href} className="group relative flex flex-col h-full">
       <div className="aspect-[3/4] relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 group-hover:border-blue-500/50 transition-all duration-300 shadow-lg group-hover:shadow-blue-500/10">
-        {loading ? (
-          <div className="absolute inset-0 animate-pulse bg-white/5 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-          </div>
-        ) : anime ? (
+        {anime.images?.jpg?.large_image_url ||
+        anime.images?.webp?.large_image_url ? (
           <>
             <img
               src={
-                anime.images.jpg.large_image_url || anime.images.jpg.image_url
+                anime.images?.webp?.large_image_url ||
+                anime.images?.jpg?.large_image_url
               }
               alt={anime.title}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -59,8 +38,15 @@ function AnimeCard({ folder }: { folder: string }) {
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/10 to-transparent">
             <Folder className="w-12 h-12 text-white/10" />
-            <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic text-center px-4">
-              Metadata Unavailable
+          </div>
+        )}
+
+        {/* Unlinked indicator */}
+        {!hasFolder && (
+          <div className="absolute top-2 right-2 px-2 py-1 bg-orange-500/20 border border-orange-500/30 rounded-lg flex items-center gap-1">
+            <CloudOff className="w-3 h-3 text-orange-400" />
+            <span className="text-[8px] font-black text-orange-400 uppercase">
+              Online
             </span>
           </div>
         )}
@@ -75,11 +61,11 @@ function AnimeCard({ folder }: { folder: string }) {
 
       <div className="mt-3 px-1">
         <p className="text-xs font-bold leading-tight line-clamp-2 group-hover:text-blue-400 transition-colors uppercase tracking-tight">
-          {anime?.title || folder}
+          {anime.title}
         </p>
-        {anime && anime.title.toLowerCase() !== folder.toLowerCase() && (
+        {anime.localFolderName && anime.title !== anime.localFolderName && (
           <p className="text-[9px] text-white/30 truncate mt-1 italic uppercase font-medium">
-            {folder}
+            {anime.localFolderName}
           </p>
         )}
       </div>
@@ -87,8 +73,38 @@ function AnimeCard({ folder }: { folder: string }) {
   );
 }
 
+// Card for unlinked folders (no database entry)
+function FolderCard({ folder }: { folder: string }) {
+  return (
+    <Link
+      href={`/watch/${encodeURIComponent(folder)}`}
+      className="group relative flex flex-col h-full"
+    >
+      <div className="aspect-[3/4] relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 group-hover:border-blue-500/50 transition-all duration-300 shadow-lg">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/10 to-transparent">
+          <Folder className="w-12 h-12 text-white/20" />
+          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest text-center px-4">
+            Unlinked Folder
+          </span>
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40">
+          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-xl">
+            <Play className="w-6 h-6 fill-white ml-1" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 px-1">
+        <p className="text-xs font-bold leading-tight line-clamp-2 group-hover:text-blue-400 transition-colors uppercase tracking-tight">
+          {folder}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 export default function LibraryPage() {
-  const [folders, setFolders] = useState<string[]>([]);
+  const [libraryAnime, setLibraryAnime] = useState<any[]>([]);
+  const [unlinkedFolders, setUnlinkedFolders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineResults, setOnlineResults] = useState<any[]>([]);
@@ -98,7 +114,8 @@ export default function LibraryPage() {
     fetch("/api/library")
       .then((res) => res.json())
       .then((data) => {
-        if (data.folders) setFolders(data.folders);
+        if (data.anime) setLibraryAnime(data.anime);
+        if (data.unlinkedFolders) setUnlinkedFolders(data.unlinkedFolders);
         setLoading(false);
       })
       .catch((err) => {
@@ -132,7 +149,11 @@ export default function LibraryPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const filteredFolders = folders.filter((f) =>
+  // Filter library anime by search query
+  const filteredAnime = libraryAnime.filter((a) =>
+    a.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+  const filteredUnlinked = unlinkedFolders.filter((f) =>
     f.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -171,7 +192,7 @@ export default function LibraryPage() {
           <div className="hidden md:flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-white/40">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5">
               <HardDrive className="w-3 h-3 text-blue-500" />
-              <span>{folders.length} Series</span>
+              <span>{libraryAnime.length} Series</span>
             </div>
           </div>
         </div>
@@ -270,10 +291,13 @@ export default function LibraryPage() {
               </div>
             ))}
           </div>
-        ) : filteredFolders.length > 0 ? (
+        ) : filteredAnime.length > 0 || filteredUnlinked.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 lg:gap-8">
-            {filteredFolders.map((folder) => (
-              <AnimeCard key={folder} folder={folder} />
+            {filteredAnime.map((anime) => (
+              <DbAnimeCard key={anime._id} anime={anime} />
+            ))}
+            {filteredUnlinked.map((folder) => (
+              <FolderCard key={folder} folder={folder} />
             ))}
           </div>
         ) : (
