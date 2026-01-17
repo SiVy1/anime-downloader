@@ -188,6 +188,46 @@ export async function getQBitStatus(hash: string) {
   }
 }
 
+/**
+ * Get all files currently being downloaded by qBittorrent
+ */
+export async function getAllDownloadingFiles(): Promise<string[]> {
+  try {
+    const sid = await qbitLogin();
+    // Get all torrents that are not finished
+    const res = await axios.get(
+      `${QBIT_URL}/api/v2/torrents/info?filter=downloading`,
+      {
+        headers: { Cookie: sid },
+      },
+    );
+
+    let downloadingFiles: string[] = [];
+
+    for (const torrent of res.data) {
+      const filesRes = await axios.get(`${QBIT_URL}/api/v2/torrents/files`, {
+        params: { hash: torrent.hash },
+        headers: { Cookie: sid },
+      });
+
+      if (filesRes.data) {
+        for (const file of filesRes.data) {
+          // Add absolute normalized path to the list
+          const fullPath = path
+            .join(torrent.save_path, file.name)
+            .replace(/\\/g, "/");
+          downloadingFiles.push(fullPath);
+        }
+      }
+    }
+
+    return downloadingFiles;
+  } catch (error) {
+    console.error("[QBIT] Error getting downloading files:", error);
+    return [];
+  }
+}
+
 // Keep Aria2 functions as helpers if needed for transitional period
 export const addToAria2 = addToQBit;
 export const getAria2Status = getQBitStatus;

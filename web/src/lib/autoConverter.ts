@@ -23,7 +23,7 @@ class AutoConverter {
     this.isRunning = true;
     console.log("[AUTO-CONVERT] Service started monitoring:", ARIA2_PATH);
 
-    // Initial scan and then every 30 seconds
+    // Initial scan and then every 10 seconds
     this.scan();
     this.interval = setInterval(() => this.scan(), 30000);
   }
@@ -43,6 +43,10 @@ class AutoConverter {
     if (!ARIA2_PATH || !fs.existsSync(ARIA2_PATH)) return;
 
     try {
+      // Get list of currently downloading files from qBittorrent
+      // This is the most reliable way to avoid converting partial files
+      const downloadingFiles =
+        await require("./downloader").getAllDownloadingFiles();
       const folders = fs.readdirSync(ARIA2_PATH);
 
       for (const folder of folders) {
@@ -53,14 +57,25 @@ class AutoConverter {
         const mkvFiles = files.filter((f) => f.toLowerCase().endsWith(".mkv"));
 
         for (const mkvPath of mkvFiles) {
+          const normalizedPath = mkvPath.replace(/\\/g, "/");
           const relativePath = path.relative(ARIA2_PATH, mkvPath);
+
+          // Skip if qBittorrent says it's still downloading
+          if (downloadingFiles.includes(normalizedPath)) {
+            continue;
+          }
+
+          // Skip qBittorrent temporary files
+          if (mkvPath.endsWith(".!qB")) {
+            continue;
+          }
 
           // Check if already converted or in queue
           if (
             !hasConvertedVersion(mkvPath) &&
             !this.queue.includes(relativePath)
           ) {
-            console.log(`[AUTO-CONVERT] Found new MKV: ${relativePath}`);
+            console.log(`[AUTO-CONVERT] Found finished MKV: ${relativePath}`);
             this.addToQueue(relativePath);
           }
         }
