@@ -752,9 +752,9 @@ export default function WatchPage() {
               ))
             ) : episodes.length > 0 ? (
               episodes.map((ep) => (
-                <button
+                <div
                   key={ep._id}
-                  disabled={!ep.isDownloaded}
+                  role="listitem"
                   onClick={() => {
                     if (ep.isDownloaded) {
                       setCurrentFile(ep.localPath);
@@ -767,10 +767,10 @@ export default function WatchPage() {
                   }}
                   className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all text-left relative overflow-hidden ${
                     currentFile === ep.localPath
-                      ? "bg-blue-600 border-blue-400 shadow-[0_8px_32px_rgba(37,99,235,0.3)]"
+                      ? "bg-blue-600 border-blue-400 shadow-[0_8px_32px_rgba(37,99,235,0.3)] cursor-pointer"
                       : ep.isDownloaded
-                        ? "bg-[#0c0c0c] border-white/5 hover:border-white/10 hover:bg-[#121212]"
-                        : "bg-[#050505] border-white/5 opacity-50 grayscale cursor-not-allowed"
+                        ? "bg-[#0c0c0c] border-white/5 hover:border-white/10 hover:bg-[#121212] cursor-pointer"
+                        : "bg-[#050505] border-white/5 opacity-50 grayscale"
                   }`}
                 >
                   <div
@@ -849,7 +849,7 @@ export default function WatchPage() {
                   ) : (
                     <ChevronRight className="w-4 h-4 text-white/20 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   )}
-                </button>
+                </div>
               ))
             ) : files.length > 0 ? (
               files.map((file, index) => (
