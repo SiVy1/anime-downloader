@@ -76,6 +76,9 @@ export default function WatchPage() {
   const [isSearchingTorrents, setIsSearchingTorrents] = useState(false);
   const [downloadingHash, setDownloadingHash] = useState<string | null>(null);
 
+  const [skipTimes, setSkipTimes] = useState<any[]>([]);
+  const [activeSkip, setActiveSkip] = useState<any | null>(null);
+
   const player = useRef<any>(null);
 
   useEffect(() => {
@@ -171,6 +174,41 @@ export default function WatchPage() {
         .catch((err) => console.error("Metadata fetch error:", err));
     }
   }, [currentFile, folder]);
+
+  // Fetch Skip Times (AniSkip)
+  useEffect(() => {
+    if (!animeInfo?.mal_id || !currentFile) return;
+
+    const epNum = extractEpisodeNumber(currentFile);
+    if (!epNum) return;
+
+    const fetchSkipTimes = async () => {
+      try {
+        const res = await fetch(
+          `/api/anime/skip-times/${animeInfo.mal_id}/${epNum}?episodeLength=${player.current?.state?.duration || 0}`,
+        );
+        const data = await res.json();
+        if (data.found) {
+          setSkipTimes(data.results);
+        } else {
+          setSkipTimes([]);
+        }
+      } catch (err) {
+        console.error("Skip times fetch error:", err);
+        setSkipTimes([]);
+      }
+    };
+
+    fetchSkipTimes();
+  }, [animeInfo?.mal_id, currentFile]);
+
+  const handleTimeUpdate = (detail: { currentTime: number }) => {
+    const time = detail.currentTime;
+    const skip = skipTimes.find(
+      (s) => time >= s.interval.startTime && time <= s.interval.endTime,
+    );
+    setActiveSkip(skip || null);
+  };
 
   const currentIsDownloading = currentFile
     ? downloadingFiles.some((df) => df.endsWith(currentFile))
@@ -485,11 +523,39 @@ export default function WatchPage() {
                 src={streamUrl}
                 crossOrigin
                 playsInline
-                className="w-full h-full"
                 streamType={isLiveMode ? "live:dvr" : "on-demand"}
                 minLiveDVRWindow={1}
+                onTimeUpdate={handleTimeUpdate}
               >
                 <MediaProvider>
+                  {/* Skip Button Overlay */}
+                  {activeSkip && (
+                    <div className="absolute bottom-24 right-8 z-50 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <button
+                        onClick={() => {
+                          if (player.current) {
+                            player.current.currentTime =
+                              activeSkip.interval.endTime;
+                          }
+                        }}
+                        className="flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-2xl border border-white/20 transition-all group active:scale-95"
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
+                            Wykryto{" "}
+                            {activeSkip.skipType === "op"
+                              ? "Opening"
+                              : "Ending"}
+                          </span>
+                          <span className="text-sm font-black uppercase italic">
+                            Skip{" "}
+                            {activeSkip.skipType === "op" ? "Intro" : "Outro"}
+                          </span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  )}
                   {/* Napisy zewnętrzne (OpenSubtitles) */}
                   {activeSub && (
                     <Track
