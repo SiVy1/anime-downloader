@@ -28,9 +28,7 @@ export async function GET(
     const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, decodedFolder) : null;
     const folderExists = fullPath && (await exists(fullPath));
 
-    const localFiles = folderExists
-      ? (await getVideoFiles(fullPath!)).map((f) => path.relative(fullPath!, f))
-      : [];
+    const localFiles = folderExists ? await getVideoFiles(fullPath!) : [];
     console.log(
       `[Library Debug] Folder: ${decodedFolder}, Files found:`,
       localFiles,
