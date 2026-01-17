@@ -103,9 +103,7 @@ export function useVideoPlayer(folder: string) {
       setActiveSub(null);
       setSubtitles([]);
 
-      fetch(
-        `/api/subtitles/metadata/${encodeURIComponent(folder)}/${encodeURIComponent(currentFile || "")}`,
-      )
+      fetch(`/api/subtitles/metadata/${encodeURIComponent(currentFile || "")}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.subtitles) {
@@ -162,8 +160,8 @@ export function useVideoPlayer(folder: string) {
   const streamType = canDirectPlay ? "direct" : "transcode";
   const streamUrl = currentFile
     ? canDirectPlay
-      ? `/api/stream-direct/${encodeURIComponent(folder)}/${encodeURIComponent(currentFile)}`
-      : `/api/stream/${encodeURIComponent(folder)}/${encodeURIComponent(currentFile)}`
+      ? `/api/stream-direct/${encodeURIComponent(currentFile)}`
+      : `/api/stream/${encodeURIComponent(currentFile)}`
     : "";
 
   const searchSubtitles = async () => {
