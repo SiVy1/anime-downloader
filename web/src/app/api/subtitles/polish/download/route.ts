@@ -62,7 +62,12 @@ export async function GET(req: NextRequest) {
             ext === "ass" || ext === "ssa" ? "text/x-ssa" : "text/plain";
 
           if (content) {
-            return new NextResponse(content, {
+            // Convert Node.js Buffer to ArrayBuffer for NextResponse compatibility
+            const arrayBuffer = content.buffer.slice(
+              content.byteOffset,
+              content.byteOffset + content.byteLength,
+            ) as ArrayBuffer;
+            return new NextResponse(arrayBuffer, {
               headers: {
                 "Content-Type": contentType,
                 "Content-Disposition": `inline; filename="${subEntry.name}"`,
@@ -86,8 +91,8 @@ export async function GET(req: NextRequest) {
         "Content-Type": contentType,
       },
     });
-  } catch (err: any) {
-    console.error("[PolishSubDownload Proxy] Error:", err.message);
+  } catch (err) {
+    console.error("[PolishSubDownload Proxy] Error:", err);
     return NextResponse.json(
       { error: "Failed to download subtitle" },
       { status: 500 },
