@@ -486,6 +486,8 @@ export default function WatchPage() {
                 crossOrigin
                 playsInline
                 className="w-full h-full"
+                streamType={isLiveMode ? "live:dvr" : "on-demand"}
+                minLiveDVRWindow={1}
               >
                 <MediaProvider>
                   {/* Napisy zewnętrzne (OpenSubtitles) */}

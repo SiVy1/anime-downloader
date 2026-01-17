@@ -5,6 +5,15 @@ import { ARIA2_PATH } from "@/lib/downloader";
 import ffmpeg from "fluent-ffmpeg";
 import { PassThrough } from "stream";
 
+/**
+ * Enhanced Live Stream API
+ *
+ * Strategy:
+ * 1. For H.264 files: Serve directly with Range support.
+ *    - This allows perfect seeking and timeline display in the browser.
+ * 2. For other formats (HEVC, etc.): Transcode to H.264.
+ *    - Uses fragmented MP4 for live delivery. Seeking is limited in this mode.
+ */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
@@ -25,7 +34,11 @@ export async function GET(
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
-  // Get metadata using ffprobe to decide strategy
+  // Get current file size (important for range requests)
+  const stat = fs.statSync(fullPath);
+  const currentSize = stat.size;
+
+  // Use ffprobe to detect if we can stream directly
   const metadata: any = await new Promise((resolve) => {
     ffmpeg.ffprobe(fullPath, (err, data) => {
       if (err) resolve(null);
@@ -36,17 +49,72 @@ export async function GET(
   const videoStream = metadata?.streams?.find(
     (s: any) => s.codec_type === "video",
   );
+
+  // H.264 can usually be played directly by most browsers even in MKV containers
+  // Direct streaming via Range requests is the ONLY way to get proper seeking for growing files.
   const isH264 = videoStream?.codec_name === "h264";
+  const ext = path.extname(fullPath).toLowerCase();
 
-  // Create a PassThrough stream for the response
+  // Strategy: If it's H.264, use Direct Range Stream (Seeking WORKS)
+  if (isH264) {
+    const range = req.headers.get("range");
+    const contentType = ext === ".mkv" ? "video/x-matroska" : "video/mp4";
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const requestedStart = parseInt(parts[0], 10);
+
+      // Clamp to available data (32KB safety buffer for growing files)
+      const safeSize = Math.max(0, currentSize - 32768);
+      const start = Math.min(requestedStart, safeSize);
+      const requestedEnd = parts[1] ? parseInt(parts[1], 10) : safeSize;
+      const end = Math.min(requestedEnd, safeSize);
+
+      if (start >= currentSize || start > end) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { "Content-Range": `bytes */${currentSize}` },
+        });
+      }
+
+      const chunkSize = end - start + 1;
+      const stream = fs.createReadStream(fullPath, { start, end });
+
+      return new Response(stream as any, {
+        status: 206,
+        headers: {
+          "Content-Range": `bytes ${start}-${end}/${currentSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": String(chunkSize),
+          "Content-Type": "video/mp4", // Browser treats it as MP4 even if MKV for better compatibility
+          "Cache-Control": "no-cache",
+          "X-Stream-Method": "direct-range",
+        },
+      });
+    }
+
+    // Default: serve initial chunk
+    const initialSize = Math.min(1024 * 1024 * 2, currentSize);
+    const stream = fs.createReadStream(fullPath, {
+      start: 0,
+      end: initialSize,
+    });
+    return new Response(stream as any, {
+      status: 206,
+      headers: {
+        "Content-Range": `bytes 0-${initialSize}/${currentSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Type": "video/mp4",
+        "Cache-Control": "no-cache",
+      },
+    });
+  }
+
+  // Strategy: Non-H.264 (HEVC, etc.) - Must Transcode (Seeking LIMITED)
   const passThrough = new PassThrough();
-
-  // FFmpeg command setup based on PDF guidelines
   const command = ffmpeg(fullPath)
     .format("mp4")
-    // Use copy for H.264, transcode for anything else (HEVC, etc.)
-    .videoCodec(isH264 ? "copy" : "libx264")
-    // PDF SCENARIO 2: Optimized for CPU-only VPS
+    .videoCodec("libx264")
     .outputOptions([
       "-preset ultrafast",
       "-tune zerolatency",
@@ -55,29 +123,24 @@ export async function GET(
       "-bufsize 6M",
       "-movflags frag_keyframe+empty_moov+default_base_moof",
       "-map 0:v:0",
-      "-map 0:a:0?", // Take first audio track
-      "-c:a aac", // Always convert audio to AAC for browser compatibility
-      "-ac 2", // Downmix to 2 channels
+      "-map 0:a:0?",
+      "-c:a aac",
+      "-ac 2",
     ])
-    .on("start", (cmd) => {
-      console.log(`[LIVE-STREAM] Started FFmpeg: ${cmd}`);
-    })
     .on("error", (err) => {
       console.error(`[LIVE-STREAM] FFmpeg Error: ${err.message}`);
       passThrough.end();
     });
 
-  // Pipe result to our PassThrough stream
   command.pipe(passThrough, { end: true });
 
-  // Return the stream as response
-  // We don't set Content-Length because it's a dynamic stream
   return new NextResponse(passThrough as any, {
     headers: {
       "Content-Type": "video/mp4",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
       "Transfer-Encoding": "chunked",
+      "X-Stream-Method": "transcode-live",
     },
   });
 }
