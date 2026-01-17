@@ -15,8 +15,10 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path: pathParts } = await params;
+  console.log("[StreamDirect] Raw path parts:", pathParts);
 
   if (!ARIA2_PATH || pathParts.length < 2) {
+    console.error("[StreamDirect] Invalid request or ARIA2_PATH missing");
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
@@ -24,7 +26,13 @@ export async function GET(
   const filename = decodeURIComponent(pathParts.slice(1).join("/"));
   const fullPath = path.join(ARIA2_PATH, folder, filename);
 
+  console.log("[StreamDirect] Decoded folder:", folder);
+  console.log("[StreamDirect] Decoded filename:", filename);
+  console.log("[StreamDirect] Constructed ARIA2_PATH:", ARIA2_PATH);
+  console.log("[StreamDirect] Attempting to serve:", fullPath);
+
   if (!fs.existsSync(fullPath)) {
+    console.error("[StreamDirect] File not found at path:", fullPath);
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 

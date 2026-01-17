@@ -14,9 +14,13 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const { path: pathSegments } = await params;
+  console.log("[SubMetadata] Raw path segments:", pathSegments);
+
   const filePath = pathSegments.map((p) => decodeURIComponent(p)).join("/");
+  console.log("[SubMetadata] Decoded relative path:", filePath);
 
   if (!ARIA2_PATH) {
+    console.error("[SubMetadata] ARIA2_PATH not configured");
     return NextResponse.json(
       { error: "ARIA2_PATH not configured" },
       { status: 500 },
@@ -24,8 +28,11 @@ export async function GET(
   }
 
   const fullPath = path.join(ARIA2_PATH, filePath);
+  console.log("[SubMetadata] Full system path:", fullPath);
 
   if (!fs.existsSync(fullPath)) {
+    console.error("[SubMetadata] File does not exist:", fullPath);
+    console.error("[SubMetadata] ARIA2_PATH is:", ARIA2_PATH);
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
