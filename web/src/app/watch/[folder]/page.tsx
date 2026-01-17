@@ -160,6 +160,9 @@ export default function WatchPage() {
     if (currentFile) {
       setInternalSubs([]);
       setCodecInfo(null);
+      setActiveSub(null); // Reset selected subtitle when episode changes
+      setSubtitles([]); // Reset search results
+
       fetch(
         `/api/subtitles/metadata/${folder}/${encodeURIComponent(currentFile)}`,
       )

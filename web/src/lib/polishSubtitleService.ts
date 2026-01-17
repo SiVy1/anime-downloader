@@ -127,16 +127,17 @@ export class PolishSubtitleService {
 
       // Check if episode matches if we have a target episode
       if (targetEpisode) {
-        // Look for epXX or episode XX in title or comment
+        // Look for epXX or episode XX or just the number in title or comment
+        // Using a more robust regex that avoids partial matches (like 1 matching 10)
         const epRegex = new RegExp(
-          `(?:ep|episode|\\s|\\-)${targetEpisode}(?:\\s|\\-|\\.|$)`,
+          `(\\b|\\s|_|\\-|ep|episode)${targetEpisode}(\\b|\\s|_|\\-|\\.|$)`,
           "i",
         );
-        if (epRegex.test(originalTitle) || epRegex.test(commentText)) {
-          // It's a match for the episode number
-        } else {
-          // If we're looking for a specific episode and it's not mentioned, skip or lower priority
-          if (matchType !== "exact_group") continue; // Be strict for non-exact groups
+
+        if (!epRegex.test(originalTitle) && !epRegex.test(commentText)) {
+          // If we're looking for a specific episode and it's not mentioned, skip it entirely
+          // This prevents Episode 1 from showing up for all other episodes
+          continue;
         }
       }
 
