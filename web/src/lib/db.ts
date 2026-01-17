@@ -19,10 +19,12 @@ export async function connectDB() {
     };
     cachedMongo = await mongoose.connect(MONGODB_URI, opts);
     (global as any).mongoose = cachedMongo;
-    console.log("[DB] MongoDB Connected");
+    console.log(
+      `[DB] MongoDB Connected Successfully to: ${MONGODB_URI.split("@").pop()}`,
+    );
     return cachedMongo;
   } catch (error) {
-    console.error("[DB] MongoDB connection error:", error);
+    console.error("[DB] MongoDB Connection Error:", error);
     throw error;
   }
 }
@@ -39,8 +41,11 @@ export function getRedis() {
       retryStrategy: (times) => Math.min(times * 50, 2000),
     });
 
-    redis.on("error", (err) => console.error("[REDIS] Error:", err));
-    redis.on("connect", () => console.log("[REDIS] Connected"));
+    redis.on("error", (err) => console.error("[REDIS] Connection Error:", err));
+    redis.on("connect", () => console.log("[REDIS] Connecting to server..."));
+    redis.on("ready", () =>
+      console.log("[REDIS] Connection Established & Ready"),
+    );
   }
   return redis;
 }
