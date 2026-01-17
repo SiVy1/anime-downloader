@@ -579,6 +579,15 @@ export default function WatchPage() {
                       </button>
                     </div>
                   )}
+                  {/* Oś czasu (Opening/Ending) */}
+                  {animeInfo?.mal_id && currentFile && (
+                    <Track
+                      key={`chapters-${animeInfo.mal_id}-${extractEpisodeNumber(currentFile)}`}
+                      src={`/api/anime/skip-times/${animeInfo.mal_id}/${extractEpisodeNumber(currentFile)}/chapters.vtt?episodeLength=${Math.floor(player.current?.state?.duration || 0)}`}
+                      kind="chapters"
+                      default
+                    />
+                  )}
                   {/* Napisy zewnętrzne (OpenSubtitles) */}
                   {activeSub && (
                     <Track
