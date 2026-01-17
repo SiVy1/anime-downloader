@@ -190,8 +190,8 @@ export default function WatchPage() {
     });
     if (!animeInfo?.mal_id || !currentFile) return;
 
-    const epNum = extractEpisodeNumber(currentFile);
-    console.log("[AniSkip] Extracted episode number:", epNum);
+    const epNum = getCurrentEpisodeNumber();
+    console.log("[AniSkip] Episode number from DB:", epNum);
     if (!epNum) return;
 
     const fetchSkipTimes = async () => {
@@ -459,19 +459,28 @@ export default function WatchPage() {
   };
 
   /**
-   * Helper to extract episode number from filename
-   * Look for patterns like " - 01", "Ep 01", "E01", " 01 "
+   * Helper to get episode number from database
+   * Matches currentFile to episodes array and returns the episode number
    */
-  const extractEpisodeNumber = (filename: string): string | null => {
-    const cleanName = filename.split("/").pop() || "";
-    // Matches common patterns: S01E01, Ep 01, - 01, [01]
-    const match =
-      cleanName.match(/[Ee](\d+)/) ||
-      cleanName.match(/Ep\s*(\d+)/i) ||
-      cleanName.match(/\s-\s(\d+)/) ||
-      cleanName.match(/\[(\d+)\]/) ||
-      cleanName.match(/\b(\d{1,3})\b/);
+  const getCurrentEpisodeNumber = (): string | null => {
+    if (!currentFile || episodes.length === 0) return null;
+    const ep = episodes.find((e) => e.localPath === currentFile);
+    return ep?.number?.toString() || null;
+  };
 
+  /**
+   * Helper to extract episode number from filename (for legacy files display)
+   */
+  const extractEpisodeNumberFromFilename = (
+    filename: string,
+  ): string | null => {
+    const cleanName = filename.split("/").pop() || "";
+    const match =
+      cleanName.match(/\s-\s(\d{1,3})(?:v\d+)?/) ||
+      cleanName.match(/S\d+E(\d+)/i) ||
+      cleanName.match(/\bEp?\s*(\d{1,3})\b/i) ||
+      cleanName.match(/\[(\d{1,3})\]/) ||
+      cleanName.match(/\b(\d{1,2})(?:v\d+)?\s*\(/);
     return match ? parseInt(match[1], 10).toString() : null;
   };
 
@@ -588,8 +597,8 @@ export default function WatchPage() {
                   {/* Oś czasu (Opening/Ending) */}
                   {animeInfo?.mal_id && currentFile && (
                     <Track
-                      key={`chapters-${animeInfo.mal_id}-${extractEpisodeNumber(currentFile)}`}
-                      src={`/api/anime/skip-times/${animeInfo.mal_id}/${extractEpisodeNumber(currentFile)}/chapters.vtt?episodeLength=${Math.floor(player.current?.state?.duration || 0)}`}
+                      key={`chapters-${animeInfo.mal_id}-${getCurrentEpisodeNumber()}`}
+                      src={`/api/anime/skip-times/${animeInfo.mal_id}/${getCurrentEpisodeNumber()}/chapters.vtt?episodeLength=${Math.floor(player.current?.state?.duration || 0)}`}
                       kind="chapters"
                       default
                     />
@@ -994,7 +1003,7 @@ export default function WatchPage() {
                       }`}
                     >
                       {(() => {
-                        const epNum = extractEpisodeNumber(file);
+                        const epNum = extractEpisodeNumberFromFilename(file);
                         const jikanEp = episodesInfo.find(
                           (e) => e.episode === epNum,
                         );
