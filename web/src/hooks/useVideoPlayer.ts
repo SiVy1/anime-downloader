@@ -37,6 +37,7 @@ export function useVideoPlayer(folder: string) {
 
   const [skipTimes, setSkipTimes] = useState<any[]>([]);
   const [activeSkip, setActiveSkip] = useState<any | null>(null);
+  const [duration, setDuration] = useState(0);
 
   const playerRef = useRef<any>(null);
 
@@ -119,16 +120,20 @@ export function useVideoPlayer(folder: string) {
 
   // Skip Times
   useEffect(() => {
-    if (!animeInfo?.mal_id || !currentFile) return;
+    if (!animeInfo?.mal_id || !currentFile || duration === 0) return;
     const ep = episodes.find((e) => e.localPath === currentFile);
     const epNum = ep?.number;
     if (!epNum) return;
 
     const fetchSkipTimes = async () => {
       try {
-        const duration = playerRef.current?.state?.duration || 0;
         const res = await fetch(
-          `/api/anime/skip-times/${animeInfo.mal_id}/${epNum}?episodeLength=${duration}`,
+          `/api/anime/skip-times/${animeInfo.mal_id}/${epNum}?episodeLength=${Math.floor(duration)}`,
+          {
+            headers: {
+              "X-Client-ID": "ZGfO0sMF3eCwLYf8yMSCJjlynwNGRXWE",
+            },
+          },
         );
         const data = await res.json();
         if (data.found) setSkipTimes(data.results);
@@ -138,7 +143,11 @@ export function useVideoPlayer(folder: string) {
       }
     };
     fetchSkipTimes();
-  }, [animeInfo?.mal_id, currentFile, episodes]);
+  }, [animeInfo?.mal_id, currentFile, episodes, duration]);
+
+  const handleDurationChange = (detail: { duration: number }) => {
+    setDuration(detail.duration);
+  };
 
   const handleTimeUpdate = (detail: { currentTime: number }) => {
     const time = detail.currentTime;
@@ -309,6 +318,7 @@ export function useVideoPlayer(folder: string) {
     streamUrl,
     streamType,
     handleTimeUpdate,
+    handleDurationChange,
     searchSubtitles,
     selectSubtitle,
     toggleWatched,

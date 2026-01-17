@@ -44,6 +44,7 @@ export default function WatchPage() {
     streamUrl,
     streamType,
     handleTimeUpdate,
+    handleDurationChange,
     searchSubtitles,
     selectSubtitle,
     toggleWatched,
@@ -67,7 +68,7 @@ export default function WatchPage() {
             <div className="flex items-center gap-2">
               <span
                 className={`w-2 h-2 rounded-full ${streamType === "direct" ? "bg-green-500" : "bg-blue-500"}`}
-              />
+              ></span>
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">
                 {streamType === "direct"
                   ? `Direct Play (${codecInfo?.video?.toUpperCase() || ""})`
@@ -108,6 +109,7 @@ export default function WatchPage() {
               ?.number?.toString()}
             folder={folder as string}
             onTimeUpdate={handleTimeUpdate}
+            onDurationChange={handleDurationChange}
           />
 
           <PlayerInfo

@@ -41,11 +41,53 @@ export async function GET(
 
   const stat = fs.statSync(actualPath);
   const fileSize = stat.size;
+  const range = req.headers.get("range");
 
-  // If it's a direct play candidate (MP4/H.264/AAC), we can still serve it directly
-  // but this route is usually called when canDirectPlay is false.
-  // To keep it simple, we'll transcode to a web-friendly stream.
+  // Determine if we should serve directly or transcode
+  // If it's already an MP4, we should almost always serve it directly with Range support
+  const isMp4 = actualExt === ".mp4";
 
+  if (isMp4) {
+    // Set proper content type based on extension
+    const contentType = "video/mp4";
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { "Content-Range": `bytes */${fileSize}` },
+        });
+      }
+
+      const chunksize = end - start + 1;
+      const stream = fs.createReadStream(actualPath, { start, end });
+
+      return new NextResponse(stream as any, {
+        status: 206,
+        headers: {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunksize.toString(),
+          "Content-Type": contentType,
+        },
+      });
+    } else {
+      const stream = fs.createReadStream(actualPath);
+      return new NextResponse(stream as any, {
+        headers: {
+          "Content-Length": fileSize.toString(),
+          "Content-Type": contentType,
+          "Accept-Ranges": "bytes",
+        },
+      });
+    }
+  }
+
+  // Fallback: Transcoding for MKV or unsupported formats
   const passThrough = new PassThrough();
   const command = ffmpeg(actualPath)
     .format("mp4")

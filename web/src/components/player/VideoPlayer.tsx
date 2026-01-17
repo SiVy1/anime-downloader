@@ -19,6 +19,7 @@ interface VideoPlayerProps {
   epNum?: string;
   folder: string;
   onTimeUpdate: (detail: { currentTime: number }) => void;
+  onDurationChange: (duration: number) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -34,6 +35,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   epNum,
   folder,
   onTimeUpdate,
+  onDurationChange,
 }) => {
   return (
     <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto">
@@ -48,6 +50,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           streamType="on-demand"
           minLiveDVRWindow={1}
           onTimeUpdate={onTimeUpdate}
+          onDurationChange={onDurationChange}
         >
           <MediaProvider>
             {activeSkip && (

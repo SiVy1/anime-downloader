@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
+import { promises as fsp } from "fs";
 import path from "path";
 import { ARIA2_PATH } from "@/lib/downloader";
 
