@@ -271,9 +271,18 @@ export default function WatchPage() {
   };
 
   const selectSubtitle = (sub: any) => {
-    const subUrl = `/api/subtitles/download?file_id=${sub.attributes.files[0].file_id}`;
-    setActiveSub(subUrl);
-    setShowSubModal(false);
+    let subUrl = "";
+    if (sub.attributes.url) {
+      subUrl = sub.attributes.url;
+    } else if (sub.attributes.files && sub.attributes.files[0]) {
+      subUrl = `/api/subtitles/download?file_id=${sub.attributes.files[0].file_id}`;
+    }
+
+    if (subUrl) {
+      console.log("[Subtitles] Selected:", subUrl);
+      setActiveSub(subUrl);
+      setShowSubModal(false);
+    }
   };
 
   // Status check on mount/file change
@@ -1027,7 +1036,7 @@ export default function WatchPage() {
                   Wyszukaj Napisy
                 </h3>
                 <p className="text-xs text-white/40 mt-1">
-                  Wyniki z bazy OpenSubtitles.com
+                  Wyniki z wielu źródeł (AniSub, Tosho, OpenSubtitles)
                 </p>
               </div>
               <button
@@ -1059,13 +1068,33 @@ export default function WatchPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white/90 truncate">
                         {sub.attributes.release ||
-                          sub.attributes.feature_details.title}
+                          (sub.attributes.feature_details &&
+                            sub.attributes.feature_details.title) ||
+                          "Napisy"}
                       </p>
                       <div className="flex items-center gap-3 mt-1 text-[10px] text-white/40 font-bold uppercase tracking-wider">
-                        <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded ring-1 ring-blue-500/20">
-                          {sub.attributes.language}
+                        <span
+                          className={`px-1.5 py-0.5 rounded ring-1 transition-all ${
+                            sub.attributes.language === "pl"
+                              ? "bg-red-600/20 text-red-400 ring-red-500/20"
+                              : "bg-blue-600/20 text-blue-400 ring-blue-500/20"
+                          }`}
+                        >
+                          {(sub.attributes.language || "en").toUpperCase()}
                         </span>
-                        <span>{sub.attributes.fps} FPS</span>
+                        {sub.attributes.source && (
+                          <span className="text-blue-500/80">
+                            {sub.attributes.source}
+                          </span>
+                        )}
+                        {sub.attributes.match_type === "exact_group" && (
+                          <span className="text-green-500 font-black">
+                            ✓ SYNC
+                          </span>
+                        )}
+                        {sub.attributes.fps && (
+                          <span>{sub.attributes.fps} FPS</span>
+                        )}
                         <span>ID: {sub.id}</span>
                       </div>
                     </div>
@@ -1102,7 +1131,8 @@ export default function WatchPage() {
                   Szukaj Torrenta
                 </h2>
                 <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">
-                  {anime?.title} — Odcinek {searchingEp.number}
+                  {animeInfo?.title || anime?.title} — Odcinek{" "}
+                  {searchingEp.number}
                 </p>
               </div>
               <button
