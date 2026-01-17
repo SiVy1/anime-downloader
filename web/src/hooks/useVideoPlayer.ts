@@ -103,7 +103,7 @@ export function useVideoPlayer(folder: string) {
       setSubtitles([]);
 
       fetch(
-        `/api/subtitles/metadata/${folder}/${encodeURIComponent(currentFile)}`,
+        `/api/subtitles/metadata/${encodeURIComponent(folder)}/${encodeURIComponent(currentFile || "")}`,
       )
         .then((res) => res.json())
         .then((data) => {
@@ -148,11 +148,13 @@ export function useVideoPlayer(folder: string) {
     setActiveSkip(skip || null);
   };
 
-  const streamType = codecInfo?.canDirectPlay ? "direct" : "transcode";
+  const isMp4 = currentFile?.toLowerCase().endsWith(".mp4");
+  const canDirectPlay = codecInfo ? codecInfo.canDirectPlay : isMp4;
+  const streamType = canDirectPlay ? "direct" : "transcode";
   const streamUrl = currentFile
-    ? codecInfo?.canDirectPlay
-      ? `/api/stream-direct/${folder}/${encodeURIComponent(currentFile)}`
-      : `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
+    ? canDirectPlay
+      ? `/api/stream-direct/${encodeURIComponent(folder)}/${encodeURIComponent(currentFile)}`
+      : `/api/stream/${encodeURIComponent(folder)}/${encodeURIComponent(currentFile)}`
     : "";
 
   const searchSubtitles = async () => {

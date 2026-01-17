@@ -5,8 +5,9 @@ import { ARIA2_PATH } from "@/lib/downloader";
 import ffmpeg from "fluent-ffmpeg";
 
 // Browser-supported codecs for direct playback
-const BROWSER_VIDEO_CODECS = new Set(["h264", "vp8", "vp9", "av1"]);
+const BROWSER_VIDEO_CODECS = new Set(["h264", "vp8", "vp9", "av1", "hevc"]);
 const BROWSER_AUDIO_CODECS = new Set(["aac", "mp3", "opus", "vorbis", "flac"]);
+const BROWSER_CONTAINERS = new Set(["mp4", "webm", "ogg", "mov"]);
 
 export async function GET(
   req: NextRequest,
@@ -64,7 +65,7 @@ export async function GET(
       const videoSupported = videoCodec && BROWSER_VIDEO_CODECS.has(videoCodec);
       const audioSupported = audioCodec && BROWSER_AUDIO_CODECS.has(audioCodec);
       const containerSupported =
-        container.includes("mp4") || container.includes("webm");
+        container && BROWSER_CONTAINERS.has(container.toLowerCase());
 
       // H.264 + AAC in MKV might work on some browsers (Safari, iPhone)
       const h264InMkv = videoCodec === "h264" && audioCodec === "aac";

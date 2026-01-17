@@ -39,53 +39,49 @@ export async function GET(
 
   const ext = actualExt;
 
-  // Serve all video files directly with Range support
-  // MKV/HEVC works natively in Edge and Safari, Chrome may need HEVC extension
   const stat = fs.statSync(actualPath);
   const fileSize = stat.size;
-  const range = req.headers.get("range");
 
-  // Set proper content type based on extension
-  const mimeTypes: Record<string, string> = {
-    ".mkv": "video/x-matroska",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".avi": "video/x-msvideo",
-    ".mov": "video/quicktime",
-  };
-  const contentType = mimeTypes[ext] || "video/mp4";
+  // If it's a direct play candidate (MP4/H.264/AAC), we can still serve it directly
+  // but this route is usually called when canDirectPlay is false.
+  // To keep it simple, we'll transcode to a web-friendly stream.
 
-  if (range) {
-    const parts = range.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-    if (start >= fileSize) {
-      return new NextResponse(null, {
-        status: 416,
-        headers: { "Content-Range": `bytes */${fileSize}` },
-      });
-    }
-
-    const chunksize = end - start + 1;
-    const stream = fs.createReadStream(actualPath, { start, end });
-
-    return new NextResponse(stream as any, {
-      status: 206,
-      headers: {
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": chunksize.toString(),
-        "Content-Type": contentType,
-      },
+  const passThrough = new PassThrough();
+  const command = ffmpeg(actualPath)
+    .format("mp4")
+    .videoCodec("libx264")
+    .audioCodec("aac")
+    .outputOptions([
+      "-preset ultrafast",
+      "-tune zerolatency",
+      "-movflags frag_keyframe+empty_moov+default_base_moof",
+      "-map 0:v:0",
+      "-map 0:a:0?",
+      "-threads 0",
+    ])
+    .on("error", (err) => {
+      console.error(`[TRANSCODE ERROR] ${err.message}`);
+      passThrough.destroy();
     });
-  } else {
-    const stream = fs.createReadStream(actualPath);
-    return new NextResponse(stream as any, {
-      headers: {
-        "Content-Length": fileSize.toString(),
-        "Content-Type": contentType,
-      },
-    });
-  }
+
+  command.pipe(passThrough, { end: true });
+
+  const webStream = new ReadableStream({
+    start(controller) {
+      passThrough.on("data", (chunk) => controller.enqueue(chunk));
+      passThrough.on("end", () => controller.close());
+      passThrough.on("error", (err) => controller.error(err));
+    },
+    cancel() {
+      passThrough.destroy();
+      command.kill("SIGKILL");
+    },
+  });
+
+  return new Response(webStream as any, {
+    headers: {
+      "Content-Type": "video/mp4",
+      "Transfer-Encoding": "chunked",
+    },
+  });
 }
