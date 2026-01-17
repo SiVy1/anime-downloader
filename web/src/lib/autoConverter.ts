@@ -6,6 +6,7 @@ import {
   hasConvertedVersion,
   getMp4Path,
 } from "./conversionService";
+import { getAllFiles } from "./utils/filesystem";
 
 /**
  * AutoConverter - Background service that monitors for new MKV files
@@ -53,7 +54,7 @@ class AutoConverter {
         const folderPath = path.join(ARIA2_PATH, folder);
         if (!fs.statSync(folderPath).isDirectory()) continue;
 
-        const files = this.getAllFiles(folderPath);
+        const files = getAllFiles(folderPath);
         const mkvFiles = files.filter((f) => f.toLowerCase().endsWith(".mkv"));
 
         for (const mkvPath of mkvFiles) {
@@ -83,22 +84,6 @@ class AutoConverter {
     } catch (err) {
       console.error("[AUTO-CONVERT] Scan error:", err);
     }
-  }
-
-  /**
-   * Recursively get all files in a directory
-   */
-  private getAllFiles(dir: string, fileList: string[] = []): string[] {
-    const files = fs.readdirSync(dir);
-    files.forEach((file) => {
-      const name = path.join(dir, file);
-      if (fs.statSync(name).isDirectory()) {
-        this.getAllFiles(name, fileList);
-      } else {
-        fileList.push(name);
-      }
-    });
-    return fileList;
   }
 
   /**

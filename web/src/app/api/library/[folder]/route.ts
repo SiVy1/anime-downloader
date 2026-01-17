@@ -4,6 +4,8 @@ import path from "path";
 import { ARIA2_PATH, getAllDownloadingFiles } from "@/lib/downloader";
 import { connectDB } from "@/lib/db";
 import { Anime, Episode } from "@/models/Anime";
+import { getVideoFiles } from "@/lib/utils/filesystem";
+import { extractEpisodeNumber } from "@/lib/animeParser";
 
 export async function GET(
   req: NextRequest,
@@ -27,50 +29,11 @@ export async function GET(
     const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, decodedFolder) : null;
     const folderExists = fullPath && fs.existsSync(fullPath);
 
-    // Helper to get all video files from folder
-    const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []) => {
-      if (!fs.existsSync(dirPath)) return arrayOfFiles;
-      const files = fs.readdirSync(dirPath, { withFileTypes: true });
-
-      files.forEach((file) => {
-        if (file.isDirectory()) {
-          arrayOfFiles = getAllFiles(
-            path.join(dirPath, file.name),
-            arrayOfFiles,
-          );
-        } else {
-          const ext = path.extname(file.name).toLowerCase();
-          if ([".mkv", ".mp4", ".avi", ".mov"].includes(ext)) {
-            const relativePath = path
-              .relative(dirPath, path.join(dirPath, file.name))
-              .replace(/\\/g, "/");
-            arrayOfFiles.push(relativePath);
-          }
-        }
-      });
-
-      return arrayOfFiles;
-    };
-
-    const localFiles = folderExists ? getAllFiles(fullPath!).sort() : [];
+    const localFiles = folderExists ? getVideoFiles(fullPath!) : [];
     console.log(
       `[Library Debug] Folder: ${decodedFolder}, Files found:`,
       localFiles,
     );
-
-    // Helper to extract episode number from filename
-    const extractEpisodeNumber = (filename: string): number | null => {
-      const cleanName = filename.split("/").pop() || "";
-      // Order matters! SubsPlease format " - 03v2" should be checked FIRST
-      const match =
-        cleanName.match(/\s-\s(\d{1,3})(?:v\d+)?/) || // " - 03v2" format (SubsPlease)
-        cleanName.match(/S\d+E(\d+)/i) || // S01E03 format
-        cleanName.match(/\bEp?\s*(\d{1,3})\b/i) || // "E03" or "Ep 03" with word boundary
-        cleanName.match(/\[(\d{1,3})\]/) || // [03] but not [F2DE2719] (max 3 digits)
-        cleanName.match(/\b(\d{1,2})(?:v\d+)?\s*\(/); // "03v2 (" before resolution
-
-      return match ? parseInt(match[1], 10) : null;
-    };
 
     // 3. If anime is in database, return episodes from DB
     if (anime) {

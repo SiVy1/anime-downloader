@@ -107,3 +107,28 @@ function simpleParseFilename(filename: string): ParsedAnimeFile {
     video_resolution,
   };
 }
+
+/**
+ * Extract episode number from a filename
+ *
+ * Handles common patterns:
+ * - SubsPlease format: "Title - 03v2" or "Title - 03 (1080p)"
+ * - Season format: S01E03
+ * - Numbered format: Ep 03, E03
+ * - Bracketed: [03]
+ *
+ * @param filename - The filename to parse
+ * @returns Episode number as integer, or null if not found
+ */
+export function extractEpisodeNumber(filename: string): number | null {
+  const cleanName = filename.split("/").pop() || "";
+  // Order matters! SubsPlease format " - 03v2" should be checked FIRST
+  const match =
+    cleanName.match(/\s-\s(\d{1,3})(?:v\d+)?/) || // " - 03v2" format (SubsPlease)
+    cleanName.match(/S\d+E(\d+)/i) || // S01E03 format
+    cleanName.match(/\bEp?\s*(\d{1,3})\b/i) || // "E03" or "Ep 03" with word boundary
+    cleanName.match(/\[(\d{1,3})\]/) || // [03] but not [F2DE2719] (max 3 digits)
+    cleanName.match(/\b(\d{1,2})(?:v\d+)?\s*\(/); // "03v2 (" before resolution
+
+  return match ? parseInt(match[1], 10) : null;
+}
