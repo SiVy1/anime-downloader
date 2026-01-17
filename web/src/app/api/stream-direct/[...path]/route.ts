@@ -52,12 +52,35 @@ export async function GET(
 
   // Handle Range requests for seeking
   const range = req.headers.get("range");
+  console.log("[StreamDirect] Range Header:", range);
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    let start = parseInt(parts[0], 10);
+    let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    // Handle suffix range (e.g., bytes=-500)
+    if (isNaN(start) && !isNaN(end)) {
+      start = fileSize - end;
+      end = fileSize - 1;
+    }
+
+    // Sanity check
+    if (isNaN(start)) start = 0;
+    if (isNaN(end)) end = fileSize - 1;
+
+    // Ensure within bounds
+    if (start >= fileSize) {
+      return new NextResponse(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${fileSize}` },
+      });
+    }
+
     const chunkSize = end - start + 1;
+    console.log(
+      `[StreamDirect] Serving chunk: ${start}-${end} (${chunkSize} bytes)`,
+    );
 
     const stream = fs.createReadStream(fullPath, { start, end });
 
