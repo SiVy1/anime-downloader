@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchNyaa } from "@/lib/downloader";
+import { downloaderService } from "@/lib/downloader";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q");
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const results = await searchNyaa(q, sort, order);
+    const results = await downloaderService.searchNyaa(q, sort, order);
     return NextResponse.json({ count: results.length, data: results });
   } catch (error) {
     console.error("[API /downloader/search] Error:", error);

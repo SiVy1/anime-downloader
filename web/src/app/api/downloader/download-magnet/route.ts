@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addToAria2 } from "@/lib/downloader";
+import { downloaderService } from "@/lib/downloader";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
     if ((!magnet && !magnets) || !finalTitle) {
       return NextResponse.json(
-        { error: "Brak magnetu lub tytułu" },
+        { error: "Missing magnet or title" },
         { status: 400 },
       );
     }
@@ -20,22 +20,25 @@ export async function POST(req: NextRequest) {
       : Array.isArray(magnet)
         ? magnet
         : [magnet];
-    const gids = await addToAria2(magnetLinks, safeTitle);
 
-    if (!gids) {
+    // Use downloaderService singleton instead of legacy function
+    const hashes = await downloaderService.addTorrent(magnetLinks, safeTitle);
+
+    if (!hashes) {
       return NextResponse.json(
-        { error: "Błąd podczas dodawania do Aria2" },
+        { error: "Failed to add torrent to qBittorrent" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
       status: "success",
-      message: `Dodano torrent do Aria2 (Folder: ${safeTitle})`,
+      message: `Torrent added to qBittorrent (Subfolder: ${safeTitle})`,
       folder: safeTitle,
-      gids: gids,
+      hashes: hashes,
     });
   } catch (error: any) {
+    console.error("[API /downloader/download-magnet] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

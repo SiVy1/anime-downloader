@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchNyaa } from "@/lib/downloader";
+import { downloaderService } from "@/lib/downloader";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -24,7 +24,11 @@ export async function GET(req: NextRequest) {
     console.log(`[Episode Search] Searching for: ${query}`);
 
     // Use existing Nyaa search (which already has sorting and filtering)
-    const results = await searchNyaa(query, "seeders", "desc");
+    const results = await downloaderService.searchNyaa(
+      query,
+      "seeders",
+      "desc",
+    );
 
     return NextResponse.json({ results: results || [] });
   } catch (err: any) {

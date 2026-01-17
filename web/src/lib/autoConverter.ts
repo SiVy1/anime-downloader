@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { ARIA2_PATH } from "./downloader";
+import { ARIA2_PATH, downloaderService } from "./downloader";
 import {
   convertMkvToMp4,
   hasConvertedVersion,
@@ -46,8 +46,7 @@ class AutoConverter {
     try {
       // Get list of currently downloading files from qBittorrent
       // This is the most reliable way to avoid converting partial files
-      const downloadingFiles =
-        await require("./downloader").getAllDownloadingFiles();
+      const downloadingFiles = await downloaderService.getActiveDownloads();
       const folders = fs.readdirSync(ARIA2_PATH);
 
       for (const folder of folders) {

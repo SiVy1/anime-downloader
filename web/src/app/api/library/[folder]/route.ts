@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { ARIA2_PATH, getAllDownloadingFiles } from "@/lib/downloader";
+import { ARIA2_PATH, downloaderService } from "@/lib/downloader";
 import { connectDB } from "@/lib/db";
 import { Anime, Episode } from "@/models/Anime";
 import { getVideoFiles } from "@/lib/utils/filesystem";
@@ -13,7 +13,7 @@ export async function GET(
 ) {
   const { folder } = await params;
   const decodedFolder = decodeURIComponent(folder);
-  const downloadingFiles = await getAllDownloadingFiles();
+  const downloadingFiles = await downloaderService.getActiveDownloads();
 
   try {
     await connectDB();

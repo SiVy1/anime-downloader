@@ -4,3 +4,4 @@
 
 export * from "./nyaa";
 export * from "./ffprobe";
+export * from "./qbittorrent";
