@@ -124,9 +124,9 @@ export function extractEpisodeNumber(filename: string): number | null {
   const cleanName = filename.split("/").pop() || "";
   // Order matters! SubsPlease format " - 03v2" should be checked FIRST
   const match =
-    cleanName.match(/\s-\s(\d{1,3})(?:v\d+)?/) || // " - 03v2" format (SubsPlease)
+    cleanName.match(/\s-\s(\d{1,4})(?:v\d+)?/) || // " - 03v2" format (SubsPlease) - up to 4 digits for long series
     cleanName.match(/S\d+E(\d+)/i) || // S01E03 format
-    cleanName.match(/\bEp?\s*(\d{1,3})\b/i) || // "E03" or "Ep 03" with word boundary
+    cleanName.match(/\bEp?\s*(\d{1,4})\b/i) || // "E03" or "Ep 03" with word boundary
     cleanName.match(/\[(\d{1,3})\]/) || // [03] but not [F2DE2719] (max 3 digits)
     cleanName.match(/\b(\d{1,2})(?:v\d+)?\s*\(/); // "03v2 (" before resolution
 
