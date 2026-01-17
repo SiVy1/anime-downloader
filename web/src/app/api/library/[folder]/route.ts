@@ -53,6 +53,10 @@ export async function GET(
     };
 
     const localFiles = folderExists ? getAllFiles(fullPath!).sort() : [];
+    console.log(
+      `[Library Debug] Folder: ${decodedFolder}, Files found:`,
+      localFiles,
+    );
 
     // Helper to extract episode number from filename
     const extractEpisodeNumber = (filename: string): number | null => {
