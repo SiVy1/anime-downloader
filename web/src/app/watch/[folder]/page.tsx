@@ -14,9 +14,18 @@ import {
   CheckCircle2,
   Loader2,
   RefreshCw,
+  Info,
+  Star,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import {
+  searchAnime,
+  getAnimeEpisodes,
+  JikanAnime,
+  JikanEpisode,
+} from "@/lib/jikanService";
 
 // Vidstack Core & React
 import "@vidstack/react/player/styles/default/theme.css";
@@ -40,6 +49,11 @@ export default function WatchPage() {
   const [files, setFiles] = useState<string[]>([]);
   const [currentFile, setCurrentFile] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Jikan state
+  const [animeInfo, setAnimeInfo] = useState<JikanAnime | null>(null);
+  const [episodesInfo, setEpisodesInfo] = useState<JikanEpisode[]>([]);
+  const [loadingInfo, setLoadingInfo] = useState(true);
 
   // Subtitles state
   const [subtitles, setSubtitles] = useState<any[]>([]);
@@ -69,7 +83,17 @@ export default function WatchPage() {
         console.error(err);
         setLoading(false);
       });
-  }, [folder]);
+
+    // Fetch Jikan info
+    searchAnime(decodedFolder)
+      .then((info) => {
+        setAnimeInfo(info);
+        if (info) {
+          getAnimeEpisodes(info.mal_id).then(setEpisodesInfo);
+        }
+      })
+      .finally(() => setLoadingInfo(false));
+  }, [folder, decodedFolder]);
 
   // Pobieranie wewnętrznych napisów gdy zmieni się plik
   useEffect(() => {
@@ -214,6 +238,23 @@ export default function WatchPage() {
     }
   };
 
+  /**
+   * Helper to extract episode number from filename
+   * Look for patterns like " - 01", "Ep 01", "E01", " 01 "
+   */
+  const extractEpisodeNumber = (filename: string): string | null => {
+    const cleanName = filename.split("/").pop() || "";
+    // Matches common patterns: S01E01, Ep 01, - 01, [01]
+    const match =
+      cleanName.match(/[Ee](\d+)/) ||
+      cleanName.match(/Ep\s*(\d+)/i) ||
+      cleanName.match(/\s-\s(\d+)/) ||
+      cleanName.match(/\[(\d+)\]/) ||
+      cleanName.match(/\b(\d{1,3})\b/);
+
+    return match ? parseInt(match[1], 10).toString() : null;
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 overflow-hidden flex flex-col">
       {/* Premium Top Navigation ... */}
@@ -304,6 +345,87 @@ export default function WatchPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Anime Info Section */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 bg-white/5 rounded-[2rem] p-8 border border-white/10 backdrop-blur-md relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Info className="w-32 h-32" />
+              </div>
+
+              {loadingInfo ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 bg-white/10 rounded-lg w-1/3" />
+                  <div className="space-y-2">
+                    <div className="h-4 bg-white/5 rounded w-full" />
+                    <div className="h-4 bg-white/5 rounded w-full" />
+                    <div className="h-4 bg-white/5 rounded w-3/4" />
+                  </div>
+                </div>
+              ) : animeInfo ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-4 mb-4">
+                    <h2 className="text-2xl font-black italic uppercase tracking-tighter">
+                      {animeInfo.title}
+                    </h2>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      <span className="text-sm font-black text-yellow-500">
+                        {animeInfo.score || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-white/60 text-sm leading-relaxed line-clamp-4 relative z-10">
+                    {animeInfo.synopsis || "Brak opisu dla tej serii."}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 mt-6">
+                    {animeInfo.genres.map((genre) => (
+                      <span
+                        key={genre.name}
+                        className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/40"
+                      >
+                        {genre.name}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 opacity-20">
+                  <Info className="w-12 h-12 mb-4" />
+                  <p className="text-sm font-bold uppercase tracking-widest">
+                    Metadata Unavailable
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-600/10 to-transparent rounded-[2rem] p-8 border border-blue-500/10 flex flex-col justify-center">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60">
+                    Status
+                  </p>
+                  <p className="text-sm font-black uppercase tracking-tight">
+                    {animeInfo?.status || "Unknown"}
+                  </p>
+                </div>
+              </div>
+              <div className="w-full h-px bg-white/5 my-4" />
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
+                  Episodes
+                </span>
+                <span className="text-xl font-black italic text-white/90">
+                  {animeInfo?.episodes || "??"}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -460,16 +582,22 @@ export default function WatchPage() {
                           : "text-white/70 group-hover:text-white"
                       }`}
                     >
-                      {file.split("/").pop()}
+                      {(() => {
+                        const epNum = extractEpisodeNumber(file);
+                        const jikanEp = episodesInfo.find(
+                          (e) => e.episode === epNum,
+                        );
+                        return jikanEp
+                          ? `${epNum}. ${jikanEp.title}`
+                          : file.split("/").pop();
+                      })()}
                     </p>
                     <p
                       className={`text-[9px] truncate transition-colors font-medium ${
                         currentFile === file ? "text-white/60" : "text-white/30"
                       }`}
                     >
-                      {file.includes("/")
-                        ? `Path: .../${file.split("/").slice(0, -1).join("/")}`
-                        : "Root Episode"}
+                      {file.split("/").pop()}
                     </p>
                   </div>
                   {currentFile === file ? (
