@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnimeById, getAnimeEpisodes } from "@/lib/jikanService";
-import { connectDB } from "@/lib/db";
-import { Anime, Episode } from "@/models/Anime";
 
+/**
+ * GET /api/anime/[id]
+ *
+ * Thin controller - delegates all business logic to jikanService.
+ * The service handles: DB lookup -> Jikan API fetch -> MongoDB upsert -> Redis cache
+ */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -15,58 +19,22 @@ export async function GET(
   }
 
   try {
-    await connectDB();
+    // Service handles all data fetching and persistence (Write-Through cache)
+    const anime = await getAnimeById(malId);
 
-    // 1. Check if we have it in DB
-    let anime = await Anime.findOne({ malId });
-
-    // 2. If not or if old, fetch from Jikan and update
     if (!anime) {
-      console.log(`[Anime API] Syncing new anime ID ${malId} from Jikan...`);
-      const jikanData = await getAnimeById(malId);
-      if (!jikanData)
-        return NextResponse.json(
-          { error: "Anime not found on Jikan" },
-          { status: 404 },
-        );
-
-      anime = await Anime.create({
-        malId: jikanData.mal_id,
-        title: jikanData.title,
-        images: jikanData.images,
-        synopsis: jikanData.synopsis,
-        type: jikanData.type,
-        episodesCount: jikanData.episodes,
-        status: jikanData.status,
-        genres: jikanData.genres.map((g: any) => g.name),
-        score: jikanData.score,
-      });
-
-      // 3. Fetch episodes as well
-      const episodes = await getAnimeEpisodes(malId);
-      if (episodes && episodes.length > 0) {
-        const episodeDocs = episodes.map((ep: any) => ({
-          animeId: anime._id,
-          number: parseInt(ep.episode || ep.mal_id, 10),
-          title: ep.title,
-          airedDate: ep.aired,
-        }));
-
-        // Use insertMany with ordered: false to skip duplicates if any
-        await Episode.insertMany(episodeDocs, { ordered: false }).catch(
-          () => {},
-        );
-      }
+      return NextResponse.json({ error: "Anime not found" }, { status: 404 });
     }
 
-    // 4. Return combined data
-    const episodes = await Episode.find({ animeId: anime._id }).sort({
-      number: 1,
-    });
+    // Get episodes (service handles sync if needed)
+    const episodes = await getAnimeEpisodes(malId, anime._id.toString());
 
     return NextResponse.json({ anime, episodes });
-  } catch (err: any) {
-    console.error(`[Anime API] Error for ID ${malId}:`, err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error) {
+    console.error(`[Anime API] Error for ID ${malId}:`, error);
+    return NextResponse.json(
+      { error: "Failed to fetch anime data" },
+      { status: 500 },
+    );
   }
 }
