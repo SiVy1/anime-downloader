@@ -19,7 +19,13 @@ import { useParams } from "next/navigation";
 // Vidstack Core & React
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
-import { MediaPlayer, MediaProvider, Track, Poster } from "@vidstack/react";
+import {
+  MediaPlayer,
+  MediaProvider,
+  Track,
+  Poster,
+  Captions,
+} from "@vidstack/react";
 import {
   DefaultVideoLayout,
   defaultLayoutIcons,
@@ -177,7 +183,7 @@ export default function WatchPage() {
                     />
                   )}
                   {/* Napisy wewnętrzne (z pliku MKV) */}
-                  {internalSubs.map((sub) => (
+                  {internalSubs.map((sub, idx) => (
                     <Track
                       key={`${currentFile}-${sub.localIndex}`}
                       src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
@@ -185,9 +191,11 @@ export default function WatchPage() {
                       kind="subtitles"
                       type="vtt"
                       lang={sub.language}
+                      default={idx === 0}
                     />
                   ))}
                 </MediaProvider>
+                <Captions />
                 <DefaultVideoLayout icons={defaultLayoutIcons} />
               </MediaPlayer>
             ) : (
@@ -432,6 +440,18 @@ export default function WatchPage() {
 
         .vds-player {
           background-color: black !important;
+        }
+
+        /* Captions styling for subtitles */
+        .vds-captions {
+          font-size: 1.5rem !important;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        .vds-captions [data-part="cue"] {
+          background: rgba(0, 0, 0, 0.75) !important;
+          padding: 0.25rem 0.5rem !important;
+          border-radius: 4px !important;
         }
       `}</style>
     </div>
