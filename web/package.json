@@ -9,13 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/ioredis": "^4.28.10",
+    "@types/mongoose": "^5.11.96",
     "@vidstack/react": "^1.12.13",
     "anitomyscript": "^2.0.4",
     "axios": "^1.13.2",
     "fluent-ffmpeg": "^2.1.3",
+    "ioredis": "^5.9.2",
     "lucide-react": "^0.562.0",
     "media-captions": "0.0.18",
     "media-icons": "^1.1.5",
+    "mongoose": "^9.1.4",
     "next": "16.1.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -78,6 +78,8 @@ export default function LibraryPage() {
   const [folders, setFolders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [onlineResults, setOnlineResults] = useState<any[]>([]);
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
 
   useEffect(() => {
     fetch("/api/library")
@@ -91,6 +93,31 @@ export default function LibraryPage() {
         setLoading(false);
       });
   }, []);
+
+  // Wyszukiwanie online z debouncingiem (uproszczonym)
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setOnlineResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingOnline(true);
+      try {
+        const res = await fetch(
+          `/api/anime/search?q=${encodeURIComponent(searchQuery)}`,
+        );
+        const data = await res.json();
+        setOnlineResults(data.results || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearchingOnline(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const filteredFolders = folders.filter((f) =>
     f.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -110,16 +137,18 @@ export default function LibraryPage() {
                 AniStream
               </h1>
               <p className="text-[9px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">
-                Alpha v0.2
+                Alpha v0.3
               </p>
             </div>
           </div>
 
           <div className="flex-1 max-w-lg relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+            <Search
+              className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${isSearchingOnline ? "text-blue-500 animate-pulse" : "text-white/20"}`}
+            />
             <input
               type="text"
-              placeholder="Wyszukaj w swojej kolekcji..."
+              placeholder="Wyszukaj anime w kolekcji lub online..."
               className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-2.5 pl-11 pr-4 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.05] transition-all text-sm font-medium"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -136,10 +165,86 @@ export default function LibraryPage() {
       </div>
 
       <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Sekcja wyników online jeśli szukamy */}
+        {searchQuery.length >= 3 && (
+          <section className="mb-16">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-black italic uppercase tracking-widest flex items-center gap-3 text-white/40">
+                <div className="w-4 h-[2px] bg-blue-600" />
+                Wyniki Online
+              </h2>
+            </div>
+
+            {isSearchingOnline ? (
+              <div className="flex items-center gap-4 text-xs text-white/20 font-bold uppercase tracking-widest animate-pulse">
+                <div className="w-4 h-4 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                Przeszukiwanie bazy globalnej...
+              </div>
+            ) : onlineResults.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                {onlineResults.map((anime) => (
+                  <div
+                    key={anime.mal_id}
+                    className="group relative flex flex-col h-full bg-white/[0.02] rounded-2xl border border-white/5 overflow-hidden hover:border-blue-500/30 transition-all"
+                  >
+                    <div className="aspect-[3/4] relative overflow-hidden">
+                      <img
+                        src={
+                          anime.images.webp.large_image_url ||
+                          anime.images.webp.image_url
+                        }
+                        alt={anime.title}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {anime.inLibrary && (
+                        <div className="absolute top-2 right-2 px-2 py-1 bg-green-600/90 backdrop-blur-md rounded-lg text-[8px] font-black uppercase tracking-widest text-white shadow-lg">
+                          W kolekcji
+                        </div>
+                      )}
+
+                      {/* Akcje dla wyniku online */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        <Link
+                          href={`/anime/${anime.mal_id}`}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                        >
+                          Szczegóły
+                        </Link>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-[10px] font-bold line-clamp-2 leading-tight uppercase tracking-tight text-white/80 group-hover:text-white transition-colors">
+                        {anime.title}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">
+                          {anime.type} • {anime.episodes || "?"} EP
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
+                          <span className="text-[9px] font-black">
+                            {anime.score || "N/A"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-white/20 font-bold uppercase tracking-widest italic">
+                Brak wyników w bazie globalnej dla "{searchQuery}"
+              </div>
+            )}
+
+            <div className="mt-12 h-[1px] bg-white/5" />
+          </section>
+        )}
+
         <div className="flex items-center justify-between mb-10">
           <h2 className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-3">
             <div className="w-8 h-1 bg-blue-600 rounded-full" />
-            Biblioteka
+            Moja Biblioteka
           </h2>
         </div>
 

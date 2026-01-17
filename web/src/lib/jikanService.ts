@@ -1,3 +1,5 @@
+import { getRedis } from "./db";
+
 /**
  * JikanService - Lightweight wrapper for Jikan v4 API
  */
@@ -13,6 +15,7 @@ export interface JikanAnime {
   };
   synopsis: string;
   score: number;
+  type: string;
   genres: Array<{ name: string }>;
   episodes: number | null;
   status: string;
@@ -74,45 +77,82 @@ export function cleanAnimeName(name: string): string {
 }
 
 /**
+ * Search anime and return a list of matches (for global search)
+ */
+export async function searchAnimeFull(query: string): Promise<JikanAnime[]> {
+  const redis = getRedis();
+  const cacheKey = `jikan:search:full:${query.toLowerCase()}`;
+
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    await throttle();
+    const response = await fetch(
+      `${JIKAN_BASE_URL}/anime?q=${encodeURIComponent(query)}&limit=10`,
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const results = data.data.map((anime: any) => ({
+      mal_id: anime.mal_id,
+      title: anime.title,
+      images: anime.images,
+      synopsis: anime.synopsis,
+      score: anime.score,
+      type: anime.type,
+      genres: anime.genres || [],
+      episodes: anime.episodes,
+      status: anime.status,
+    }));
+
+    await redis.set(cacheKey, JSON.stringify(results), "EX", 86400); // 24h
+    return results;
+  } catch (err) {
+    console.error(`[Jikan] Search error:`, err);
+    return [];
+  }
+}
+
+/**
  * Search anime and return the first best match
  */
 export async function searchAnime(query: string): Promise<JikanAnime | null> {
   const cleanedQuery = cleanAnimeName(query);
   if (!cleanedQuery) return null;
 
-  try {
-    await throttle();
+  const redis = getRedis();
+  const cacheKey = `jikan:search:best:${cleanedQuery.toLowerCase()}`;
 
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    await throttle();
     const response = await fetch(
       `${JIKAN_BASE_URL}/anime?q=${encodeURIComponent(cleanedQuery)}&limit=1`,
-      {
-        next: { revalidate: 86400 }, // Cache for 24 hours
-      },
     );
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        console.warn("[JikanService] Rate limit hit, retrying once...");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return searchAnime(query);
-      }
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     if (!data.data || data.data.length === 0) return null;
 
     const anime = data.data[0];
-    return {
+    const result = {
       mal_id: anime.mal_id,
       title: anime.title,
       images: anime.images,
       synopsis: anime.synopsis,
       score: anime.score,
+      type: anime.type,
       genres: anime.genres || [],
       episodes: anime.episodes,
       status: anime.status,
     };
+
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 86400);
+    return result;
   } catch (error) {
     console.error(
       `[JikanService] Error searching anime "${cleanedQuery}":`,
@@ -126,17 +166,22 @@ export async function searchAnime(query: string): Promise<JikanAnime | null> {
  * Get full anime details by MAL ID
  */
 export async function getAnimeById(id: number): Promise<JikanAnime | null> {
+  const redis = getRedis();
+  const cacheKey = `jikan:anime:${id}`;
+
   try {
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     await throttle();
-
-    const response = await fetch(`${JIKAN_BASE_URL}/anime/${id}`, {
-      next: { revalidate: 86400 },
-    });
-
+    const response = await fetch(`${JIKAN_BASE_URL}/anime/${id}`);
     if (!response.ok) return null;
 
     const data = await response.json();
-    return data.data;
+    const result = data.data;
+
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 86400);
+    return result;
   } catch (error) {
     console.error(`[JikanService] Error fetching anime ID ${id}:`, error);
     return null;
@@ -147,17 +192,22 @@ export async function getAnimeById(id: number): Promise<JikanAnime | null> {
  * Get episode list for an anime
  */
 export async function getAnimeEpisodes(id: number): Promise<JikanEpisode[]> {
+  const redis = getRedis();
+  const cacheKey = `jikan:episodes:${id}`;
+
   try {
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     await throttle();
-
-    const response = await fetch(`${JIKAN_BASE_URL}/anime/${id}/episodes`, {
-      next: { revalidate: 86400 },
-    });
-
+    const response = await fetch(`${JIKAN_BASE_URL}/anime/${id}/episodes`);
     if (!response.ok) return [];
 
     const data = await response.json();
-    return data.data || [];
+    const result = data.data || [];
+
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 86400);
+    return result;
   } catch (error) {
     console.error(
       `[JikanService] Error fetching episodes for ID ${id}:`,

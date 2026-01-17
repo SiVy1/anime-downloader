@@ -131,6 +131,8 @@ export async function addToQBit(magnetLinks: string[], subfolder: string = "") {
       const params = new URLSearchParams();
       params.append("urls", magnet);
       params.append("savepath", targetDir);
+      params.append("sequentialDownload", "true");
+      params.append("firstLastPiecePrio", "true");
 
       await axios.post(`${QBIT_URL}/api/v2/torrents/add`, params, {
         headers: {

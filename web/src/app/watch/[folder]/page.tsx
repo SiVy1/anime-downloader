@@ -67,6 +67,10 @@ export default function WatchPage() {
   const [convertProgress, setConvertProgress] = useState(0);
   const [isConverted, setIsConverted] = useState(false);
 
+  // Live Stream state
+  const [downloadingFiles, setDownloadingFiles] = useState<string[]>([]);
+  const [isLiveMode, setIsLiveMode] = useState(false);
+
   const player = useRef<any>(null);
 
   useEffect(() => {
@@ -76,6 +80,9 @@ export default function WatchPage() {
         if (data.files) {
           setFiles(data.files);
           if (data.files.length > 0) setCurrentFile(data.files[0]);
+        }
+        if (data.downloadingFiles) {
+          setDownloadingFiles(data.downloadingFiles);
         }
         setLoading(false);
       })
@@ -112,8 +119,14 @@ export default function WatchPage() {
     }
   }, [currentFile, folder]);
 
+  const currentIsDownloading = currentFile
+    ? downloadingFiles.some((df) => df.endsWith(currentFile))
+    : false;
+
   const streamUrl = currentFile
-    ? `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
+    ? isLiveMode
+      ? `/api/stream-live/${folder}/${encodeURIComponent(currentFile)}`
+      : `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
     : "";
 
   const searchSubtitles = async () => {

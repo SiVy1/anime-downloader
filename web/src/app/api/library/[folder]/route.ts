@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { ARIA2_PATH } from "@/lib/downloader";
+import { ARIA2_PATH, getAllDownloadingFiles } from "@/lib/downloader";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ folder: string }> },
 ) {
   const { folder } = await params;
+  const downloadingFiles = await getAllDownloadingFiles();
   if (!ARIA2_PATH) {
     return NextResponse.json(
       { error: "ARIA2_PATH not configured" },
@@ -48,7 +49,7 @@ export async function GET(
 
     const files = getAllFiles(fullPath).sort();
 
-    return NextResponse.json({ files });
+    return NextResponse.json({ files, downloadingFiles });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
