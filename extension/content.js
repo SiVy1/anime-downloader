@@ -149,6 +149,7 @@ function injectStyles() {
     .nyaa-badge-mkv { background: #3db4f2; color: #fff; }
     .nyaa-badge-mp4 { background: #4ade80; color: #000; }
     .nyaa-badge-hevc { background: #facc15; color: #000; }
+    .nyaa-badge-avc { background: #94a3b8; color: #fff; }
 
     /* Styl dla przycisku na AniList */
     .nyaa-anilist-btn {
@@ -192,12 +193,15 @@ function showSelectionModal(
       const hevcBadge = item.isHevc
         ? `<span class="nyaa-badge nyaa-badge-hevc">HEVC</span>`
         : "";
+      const avcBadge = item.isAvc
+        ? `<span class="nyaa-badge nyaa-badge-avc">H.264</span>`
+        : "";
 
       return `
     <div class="nyaa-item">
       <input type="checkbox" class="nyaa-checkbox" data-index="${index}" data-magnet="${item.magnet}">
       <div class="nyaa-info">
-        <span class="nyaa-title">${extBadge} ${hevcBadge} ${item.title}</span>
+        <span class="nyaa-title">${extBadge} ${hevcBadge} ${avcBadge} ${item.title}</span>
         <div class="nyaa-meta">
           Size: ${item.size} | Seeders: <span class="nyaa-seeders">${item.seeders}</span> | ${item.time}
         </div>

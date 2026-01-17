@@ -28,19 +28,31 @@ export async function searchNyaa(
 
     // Dodaj wykrywanie rozszerzenia i meta-informacji
     results = results.map((item: any) => {
-      const title = item.title;
+      const title = item.title.toLowerCase();
+
       const extMatch =
         title.match(/\.(mkv|mp4|avi|mov)\b/i) ||
         title.match(/\[(mkv|mp4|avi|mov)\]/i);
       const extension = extMatch ? extMatch[1].toLowerCase() : "unknown";
 
+      const isHevc =
+        title.includes("hevc") ||
+        title.includes("h265") ||
+        title.includes("h.265") ||
+        title.includes("x265") ||
+        title.includes("h 265");
+      const isAvc =
+        title.includes("h264") ||
+        title.includes("h.264") ||
+        title.includes("x264") ||
+        title.includes("avc") ||
+        title.includes("h 264");
+
       return {
         ...item,
         extension,
-        isHevc:
-          title.toLowerCase().includes("hevc") ||
-          title.toLowerCase().includes("h.265") ||
-          title.toLowerCase().includes("x265"),
+        isHevc,
+        isAvc,
       };
     });
 

@@ -92,21 +92,6 @@ export default function WatchPage() {
     ? `/api/stream/${folder}/${encodeURIComponent(currentFile)}`
     : "";
 
-  // Determine video MIME type for proper playback (Edge/Safari support HEVC natively)
-  const getVideoType = (filename: string): string => {
-    const ext = filename.split(".").pop()?.toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      mkv: "video/x-matroska",
-      mp4: "video/mp4",
-      webm: "video/webm",
-      avi: "video/x-msvideo",
-      mov: "video/quicktime",
-    };
-    return mimeTypes[ext || ""] || "video/mp4";
-  };
-
-  const videoType = currentFile ? getVideoType(currentFile) : "video/mp4";
-
   const searchSubtitles = async () => {
     if (!currentFile) return;
     setIsSearchingSubs(true);
@@ -274,79 +259,43 @@ export default function WatchPage() {
           {/* Vidstack Video Player */}
           <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black">
             {currentFile ? (
-              // Use native video for MKV (HEVC support in Edge/Safari with full quality)
-              currentFile.toLowerCase().endsWith(".mkv") ? (
-                <video
-                  ref={player as any}
-                  className="w-full h-full"
-                  controls
-                  playsInline
-                  autoPlay
-                >
-                  <source src={streamUrl} type={videoType} />
-                  {/* Napisy wewnętrzne (z pliku MKV) */}
-                  {internalSubs.map((sub, idx) => (
-                    <track
-                      key={`${currentFile}-${sub.localIndex}`}
-                      src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
-                      label={`${sub.title}`}
-                      kind="subtitles"
-                      srcLang={sub.language}
-                      default={idx === 0}
-                    />
-                  ))}
-                  {/* Napisy zewnętrzne */}
+              <MediaPlayer
+                ref={player}
+                title={currentFile}
+                src={streamUrl}
+                crossOrigin
+                playsInline
+                className="w-full h-full"
+              >
+                <MediaProvider>
+                  {/* Napisy zewnętrzne (OpenSubtitles) */}
                   {activeSub && (
-                    <track
+                    <Track
+                      key={activeSub}
                       src={activeSub}
                       label="Napisy Online"
                       kind="subtitles"
-                      srcLang="pl"
+                      type="vtt"
+                      lang="pl"
                       default
                     />
                   )}
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                // Use Vidstack for MP4 and other formats
-                <MediaPlayer
-                  ref={player}
-                  title={currentFile}
-                  src={streamUrl}
-                  crossOrigin
-                  playsInline
-                  className="w-full h-full"
-                >
-                  <MediaProvider>
-                    {/* Napisy zewnętrzne (OpenSubtitles) */}
-                    {activeSub && (
-                      <Track
-                        key={activeSub}
-                        src={activeSub}
-                        label="Napisy Online"
-                        kind="subtitles"
-                        type="vtt"
-                        lang="pl"
-                        default
-                      />
-                    )}
-                    {/* Napisy wewnętrzne (z pliku MKV) */}
-                    {internalSubs.map((sub, idx) => (
-                      <Track
-                        key={`${currentFile}-${sub.localIndex}`}
-                        src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
-                        label={`${sub.title} [${sub.language}]`}
-                        kind="subtitles"
-                        type="vtt"
-                        lang={sub.language}
-                        default={idx === 0}
-                      />
-                    ))}
-                  </MediaProvider>
-                  <Captions />
-                  <DefaultVideoLayout icons={defaultLayoutIcons} />
-                </MediaPlayer>
-              )
+                  {/* Napisy wewnętrzne (z pliku MKV) */}
+                  {internalSubs.map((sub, idx) => (
+                    <Track
+                      key={`${currentFile}-${sub.localIndex}`}
+                      src={`/api/subtitles/extract/${sub.localIndex}/${folder}/${encodeURIComponent(currentFile)}`}
+                      label={`${sub.title} [${sub.language}]`}
+                      kind="subtitles"
+                      type="vtt"
+                      lang={sub.language}
+                      default={idx === 0}
+                    />
+                  ))}
+                </MediaProvider>
+                <Captions />
+                <DefaultVideoLayout icons={defaultLayoutIcons} />
+              </MediaPlayer>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-white/5 to-transparent">
                 <MonitorPlay className="w-20 h-20 text-white/10" />
