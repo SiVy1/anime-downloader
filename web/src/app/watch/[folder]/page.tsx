@@ -87,7 +87,9 @@ export default function WatchPage() {
       .then((data) => {
         if (data.anime) {
           setAnime(data.anime);
-          setAnimeInfo(data.anime); // Fallback to Jikan structure
+          if (data.anime.mal_id) {
+            setAnimeInfo(data.anime);
+          }
         }
         if (data.episodes) {
           setEpisodes(data.episodes);
@@ -177,24 +179,36 @@ export default function WatchPage() {
 
   // Fetch Skip Times (AniSkip)
   useEffect(() => {
+    console.log("[AniSkip] Effect triggered", {
+      malId: animeInfo?.mal_id,
+      currentFile,
+    });
     if (!animeInfo?.mal_id || !currentFile) return;
 
     const epNum = extractEpisodeNumber(currentFile);
+    console.log("[AniSkip] Extracted episode number:", epNum);
     if (!epNum) return;
 
     const fetchSkipTimes = async () => {
       try {
+        const duration = player.current?.state?.duration || 0;
+        console.log(
+          `[AniSkip] Fetching skip times: MAL:${animeInfo.mal_id}, Ep:${epNum}, Duration:${duration}`,
+        );
+
         const res = await fetch(
-          `/api/anime/skip-times/${animeInfo.mal_id}/${epNum}?episodeLength=${player.current?.state?.duration || 0}`,
+          `/api/anime/skip-times/${animeInfo.mal_id}/${epNum}?episodeLength=${duration}`,
         );
         const data = await res.json();
+        console.log("[AniSkip] Response received:", data);
+
         if (data.found) {
           setSkipTimes(data.results);
         } else {
           setSkipTimes([]);
         }
       } catch (err) {
-        console.error("Skip times fetch error:", err);
+        console.error("[AniSkip] Fetch error:", err);
         setSkipTimes([]);
       }
     };
