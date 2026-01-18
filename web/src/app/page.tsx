@@ -14,12 +14,14 @@ import {
   Compass,
   Plus,
   Loader2,
+  List,
 } from "lucide-react";
 import Link from "next/link";
 import SeasonView from "@/components/SeasonView";
 import { UserMenu } from "@/components/ui/UserMenu";
+import { AniListView } from "@/components/home/AniListView";
 
-type Tab = "library" | "season";
+type Tab = "library" | "season" | "mylist";
 
 // Card for database anime (has full metadata)
 function DbAnimeCard({ anime }: { anime: any }) {
@@ -171,6 +173,7 @@ export default function LibraryPage() {
 
   const tabs = [
     { id: "library" as Tab, label: "Biblioteka", icon: Library },
+    { id: "mylist" as Tab, label: "Moja Lista", icon: List },
     { id: "season" as Tab, label: "Odkrywaj", icon: Compass },
   ];
 
@@ -421,6 +424,16 @@ export default function LibraryPage() {
                       </button>
                     </div>
                   )}
+                </section>
+              ) : activeTab === "mylist" ? (
+                <section>
+                  <div className="flex items-center justify-between mb-12">
+                    <h2 className="text-3xl font-black italic uppercase tracking-tighter flex items-center gap-4">
+                      <div className="w-10 h-1.5 bg-blue-600 rounded-full" />
+                      Moja Lista AniList
+                    </h2>
+                  </div>
+                  <AniListView />
                 </section>
               ) : (
                 <section>
