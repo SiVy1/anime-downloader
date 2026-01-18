@@ -22,7 +22,12 @@ interface TorrentModalProps {
 
 const container = {
   hidden: { opacity: 0 },
-  transition: { staggerChildren: 0.05 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
 };
 
 const item = {
