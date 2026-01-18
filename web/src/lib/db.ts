@@ -25,6 +25,35 @@ export async function connectDB() {
 }
 
 /**
+ * Parse Redis URL into connection options
+ * Used by BullMQ which needs separate connection config
+ */
+export function getRedisConnectionOpts(): {
+  host: string;
+  port: number;
+  password?: string;
+  username?: string;
+} {
+  const redisUrl = env.redis.url;
+
+  try {
+    const url = new URL(redisUrl);
+    return {
+      host: url.hostname,
+      port: parseInt(url.port) || 6379,
+      password: url.password || undefined,
+      username: url.username || undefined,
+    };
+  } catch {
+    // Fallback if not a full URL (e.g., "localhost:6379" or just "localhost")
+    return {
+      host: redisUrl.includes(":") ? redisUrl.split(":")[0] : redisUrl,
+      port: redisUrl.includes(":") ? parseInt(redisUrl.split(":")[1]) : 6379,
+    };
+  }
+}
+
+/**
  * Redis Connection (Singleton)
  */
 let redis: Redis | null = null;

@@ -20,7 +20,7 @@ import * as path from "path";
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/anime";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
-const ARIA2_PATH = process.env.ARIA2_PATH || "";
+const ARIA2_PATH = process.env.ARIA2_PATH || "/home/seweryn/anime-downloader/web/anime";
 
 function createReadlineInterface(): readline.Interface {
   return readline.createInterface({

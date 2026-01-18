@@ -1,5 +1,5 @@
 import { Worker, Job } from "bullmq";
-import env from "../env";
+import { getRedisConnectionOpts } from "../db";
 import { runPVRCycle } from "../pvrService";
 
 /**
@@ -9,27 +9,11 @@ import { runPVRCycle } from "../pvrService";
  * This worker should be initialized only once.
  */
 
-const redisUrl = env.redis.url;
-let connectionOpts: any = {
+// BullMQ requires maxRetriesPerRequest: null
+const connectionOpts = {
+  ...getRedisConnectionOpts(),
   maxRetriesPerRequest: null,
 };
-
-try {
-  const url = new URL(redisUrl);
-  connectionOpts = {
-    ...connectionOpts,
-    host: url.hostname,
-    port: parseInt(url.port) || 6379,
-    password: url.password || undefined,
-    username: url.username || undefined,
-  };
-} catch (e) {
-  connectionOpts = {
-    ...connectionOpts,
-    host: redisUrl.includes(":") ? redisUrl.split(":")[0] : redisUrl,
-    port: redisUrl.includes(":") ? parseInt(redisUrl.split(":")[1]) : 6379,
-  };
-}
 
 let worker: Worker | null = null;
 

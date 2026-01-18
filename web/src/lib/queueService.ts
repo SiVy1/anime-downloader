@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import env from "./env";
+import { getRedisConnectionOpts } from "./db";
 
 /**
  * BullMQ Queue Service
@@ -12,34 +12,11 @@ const globalForBull = global as unknown as {
   pvrQueue: Queue | undefined;
 };
 
-const connection = {
-  url: env.redis.url,
-};
-
-// If env.redis.url is just a hostname, we need to handle it.
-// BullMQ connection can take host/port or a redis instance.
-const redisUrl = env.redis.url;
-let connectionOpts: any = {
+// BullMQ requires maxRetriesPerRequest: null
+const connectionOpts = {
+  ...getRedisConnectionOpts(),
   maxRetriesPerRequest: null,
 };
-
-try {
-  const url = new URL(redisUrl);
-  connectionOpts = {
-    ...connectionOpts,
-    host: url.hostname,
-    port: parseInt(url.port) || 6379,
-    password: url.password || undefined,
-    username: url.username || undefined,
-  };
-} catch (e) {
-  // Fallback if not a full URL
-  connectionOpts = {
-    ...connectionOpts,
-    host: redisUrl.includes(":") ? redisUrl.split(":")[0] : redisUrl,
-    port: redisUrl.includes(":") ? parseInt(redisUrl.split(":")[1]) : 6379,
-  };
-}
 
 export const pvrQueue =
   globalForBull.pvrQueue ??
