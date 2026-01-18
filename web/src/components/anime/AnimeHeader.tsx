@@ -26,7 +26,7 @@ export const AnimeHeader: React.FC<AnimeHeaderProps> = ({
 }) => {
   if (isLoading || !anime) return <AnimeHeaderSkeleton />;
 
-  const isTracked = !!anime._id;
+  const isTracked = !!anime.inLibrary || !!anime.localFolderName;
   // In a real app, this would be fetched from user progress
   const nextEpisode = 1;
 

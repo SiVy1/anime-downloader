@@ -366,8 +366,10 @@ export async function getAnimeById(
       // If the record exists but lacks titleRomaji, we should fall through and refresh it from AniList
       if (dbAnime.titleRomaji) {
         // Cache the DB result in Redis for future fast access
-        await redis.set(cacheKey, JSON.stringify(dbAnime), "EX", 86400);
-        return dbAnime;
+        const result = dbAnime.toObject();
+        result.inLibrary = true;
+        await redis.set(cacheKey, JSON.stringify(result), "EX", 86400);
+        return result as unknown as IAnime;
       }
       console.log(
         `[AniListService] Anime ID ${id} found in DB but lacks titleRomaji. Refreshing...`,
@@ -390,6 +392,7 @@ export async function getAnimeById(
       const transientAnime = {
         ...animeDoc,
         _id: new mongoose.Types.ObjectId(), // Virtual ID for frontend
+        inLibrary: false,
       } as unknown as IAnime;
       await redis.set(cacheKey, JSON.stringify(transientAnime), "EX", 3600); // Shorter cache for transient
       return transientAnime;
@@ -403,10 +406,12 @@ export async function getAnimeById(
     );
 
     // Step 5: Cache in Redis
-    await redis.set(cacheKey, JSON.stringify(savedAnime), "EX", 86400);
+    const result = savedAnime.toObject();
+    result.inLibrary = true;
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 86400);
 
     console.log(`[AniListService] Synced anime ID ${id} to MongoDB`);
-    return savedAnime;
+    return result as unknown as IAnime;
   } catch (error) {
     console.error(`[AniListService] Error fetching anime ID ${id}:`, error);
     return null;
