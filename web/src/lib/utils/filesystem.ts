@@ -80,3 +80,15 @@ export async function exists(filePath: string): Promise<boolean> {
 export function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, "/");
 }
+
+/**
+ * Sanitize a string to be a safe folder name for most filesystems
+ * Removes invalid characters like : / \ * ? " < > |
+ */
+export function sanitizeFolderName(name: string): string {
+  return name
+    .replace(/[\\/:*?"<>|]/g, "") // Remove common invalid chars
+    .replace(/[’'´`‘]/g, "") // Remove apostrophes (often sanitized by downloaders)
+    .replace(/\s+/g, " ") // Collapse spaces
+    .trim();
+}

@@ -4,7 +4,11 @@ import path from "path";
 import { ARIA2_PATH, downloaderService } from "@/lib/downloader";
 import { connectDB } from "@/lib/db";
 import { Anime, Episode } from "@/models/Anime";
-import { getVideoFiles, exists } from "@/lib/utils/filesystem";
+import {
+  getVideoFiles,
+  exists,
+  sanitizeFolderName,
+} from "@/lib/utils/filesystem";
 import { extractEpisodeNumber } from "@/lib/animeParser";
 
 export async function GET(
@@ -13,13 +17,18 @@ export async function GET(
 ) {
   const { folder } = await params;
   const decodedFolder = decodeURIComponent(folder);
+  const sanitizedFolder = sanitizeFolderName(decodedFolder);
   const downloadingFiles = await downloaderService.getActiveDownloads();
 
   try {
     await connectDB();
 
     // 1. Try to find anime in database by folder name OR by title
-    let animeDoc = await Anime.findOne({ localFolderName: decodedFolder });
+    let animeDoc = await Anime.findOne({ localFolderName: sanitizedFolder });
+    if (!animeDoc) {
+      // Fallback: try by unsanitized folder (for legacy)
+      animeDoc = await Anime.findOne({ localFolderName: decodedFolder });
+    }
     if (!animeDoc) {
       // Fallback: try to find by title (for newly tracked anime without folder)
       animeDoc = await Anime.findOne({ title: decodedFolder });
@@ -34,12 +43,20 @@ export async function GET(
     }
 
     // 2. Check if local folder exists (Asynchronous)
-    const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, decodedFolder) : null;
-    const folderExists = fullPath && (await exists(fullPath));
+    const fullPath = ARIA2_PATH ? path.join(ARIA2_PATH, sanitizedFolder) : null;
+    let folderExists = fullPath && (await exists(fullPath));
+
+    // Fallback to unsanitized path if sanitized fails (for migrations)
+    if (!folderExists && fullPath && ARI2_PATH) {
+      const unsanitizedPath = path.join(ARIA2_PATH, decodedFolder);
+      if (await exists(unsanitizedPath)) {
+        folderExists = true;
+      }
+    }
 
     const localFiles = folderExists ? await getVideoFiles(fullPath!) : [];
     console.log(
-      `[Library Debug] Folder: ${decodedFolder}, Files found:`,
+      `[Library Debug] Folder: ${sanitizedFolder} (original: ${decodedFolder}), Files found:`,
       localFiles,
     );
 

@@ -1,7 +1,7 @@
 import { connectDB } from "./db";
 import { Anime, Episode, IAnime, IEpisode } from "@/models/Anime";
 import { ARIA2_PATH } from "./downloader";
-import { getVideoFiles, exists } from "./utils/filesystem";
+import { getVideoFiles, exists, sanitizeFolderName } from "./utils/filesystem";
 import { extractEpisodeNumber } from "./animeParser";
 import path from "path";
 
@@ -47,12 +47,15 @@ export async function linkFolderToAnime(
 
   await connectDB();
 
+  // 0. Sanitize folder name for consistency
+  const sanitizedFolder = sanitizeFolderName(folderName);
+
   // 1. Find the anime in database
   const anime = await Anime.findOne({ anilistId });
   if (!anime) {
     return {
       success: false,
-      linkedFolder: folderName,
+      linkedFolder: sanitizedFolder,
       filesScanned: 0,
       episodesMapped: 0,
       error: "Anime not found in database",
@@ -60,16 +63,16 @@ export async function linkFolderToAnime(
   }
 
   // 2. Check if folder exists physically (for scanning)
-  const localDirPath = path.join(ARIA2_PATH, folderName);
+  const localDirPath = path.join(ARIA2_PATH, sanitizedFolder);
   const folderExists = await exists(localDirPath);
 
   // 3. Update anime with folder link (always do this if anime exists)
-  anime.localFolderName = folderName;
+  anime.localFolderName = sanitizedFolder;
   await anime.save();
 
   if (!folderExists) {
     console.log(
-      `[LibraryService] Linked folder name "${folderName}" to anime ${anilistId}, but physical folder does not exist yet (expected for new downloads).`,
+      `[LibraryService] Linked folder name "${sanitizedFolder}" (from "${folderName}") to anime ${anilistId}, but physical folder does not exist yet (expected for new downloads).`,
     );
     return {
       success: true,
