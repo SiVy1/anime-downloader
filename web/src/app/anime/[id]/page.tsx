@@ -35,20 +35,7 @@ export default function AnimeDetailPage() {
     startDownload,
   } = useAnimeDetails();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-white/20 animate-pulse">
-            Ładowanie metadanych...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !anime) {
+  if (error || (!loading && !anime)) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
@@ -77,18 +64,20 @@ export default function AnimeDetailPage() {
         isAddingToLibrary={isAddingToLibrary}
         onAdd={addToLibrary}
         onBack={() => router.back()}
+        isLoading={loading}
       />
 
       <EpisodeList
-        episodes={episodes}
-        episodesCount={anime.episodesCount}
+        episodes={episodes || []}
+        episodesCount={anime?.episodesCount}
         onSearchTorrent={startSearchTorrent}
+        isLoading={loading}
       />
 
       {searchingEp && (
         <TorrentModal
           episode={searchingEp}
-          animeTitle={anime.title}
+          animeTitle={anime?.title}
           results={torrentResults}
           isSearching={isSearchingTorrents}
           downloadingHash={downloadingHash}
