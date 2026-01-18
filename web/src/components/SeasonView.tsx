@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useSeasonAnime, SeasonAnime } from "@/hooks/useSeasonAnime";
 import { SeasonFilters } from "./season/SeasonFilters";
 import { AnimeGrid } from "./season/AnimeGrid";
@@ -14,6 +15,16 @@ interface SeasonViewProps {
 export default function SeasonView({ trackedIds, onTrack }: SeasonViewProps) {
   const { anime, loading, error, searchQuery, setSearchQuery } =
     useSeasonAnime();
+
+  const handleTrack = (anime: SeasonAnime) => {
+    onTrack(anime);
+    toast.success(
+      `Dodano ${anime.title_english || anime.title} do biblioteki`,
+      {
+        description: "Anime będzie teraz śledzone pod kątem nowych odcinków.",
+      },
+    );
+  };
 
   if (loading) {
     return (
@@ -41,10 +52,15 @@ export default function SeasonView({ trackedIds, onTrack }: SeasonViewProps) {
       <SeasonFilters
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        resultsCount={anime.length}
       />
 
       {anime.length > 0 ? (
-        <AnimeGrid anime={anime} trackedIds={trackedIds} onTrack={onTrack} />
+        <AnimeGrid
+          anime={anime}
+          trackedIds={trackedIds}
+          onTrack={handleTrack}
+        />
       ) : (
         <div className="py-20 text-center">
           <p className="text-sm text-white/20 font-bold uppercase tracking-widest italic">
