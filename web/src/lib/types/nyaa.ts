@@ -21,6 +21,8 @@ export interface NyaaRawEntry {
 
 /** Processed Nyaa search result with additional metadata */
 export interface NyaaSearchResult extends NyaaRawEntry {
+  id: string;
+  hash: string;
   extension: string;
   isHevc: boolean;
   isAvc: boolean;

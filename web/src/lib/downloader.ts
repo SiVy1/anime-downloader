@@ -68,60 +68,27 @@ class DownloaderService {
     query: string,
     sortBy: string = "seeders",
     order: string = "desc",
-    quality: string = "",
-    subCategory: string = "eng",
   ): Promise<NyaaSearchResult[]> {
     try {
-      // 1. Normalize query: remove unnecessary special characters that might confuse Nyaa
-      // but keep spaces and alphanumeric chars.
-      let normalizedQuery = query
-        .replace(/[:]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // 2. Build search query: use explicit quality if provided
-      let searchQuery = normalizedQuery;
-
-      if (
-        quality &&
-        !searchQuery.toLowerCase().includes(quality.toLowerCase())
-      ) {
-        searchQuery = `${searchQuery} ${quality}`;
-      } else if (
-        !quality &&
-        !searchQuery.toLowerCase().includes("1080p") &&
-        !searchQuery.toLowerCase().includes("720p") &&
-        !searchQuery.toLowerCase().includes("2160p")
-      ) {
-        // Default to 1080p only if no quality indicated at all
-        searchQuery = `${searchQuery} 1080p`;
-      }
-
-      console.log(
-        `[Nyaa] Requesting: ${searchQuery} (Category: anime, Sub: ${subCategory || "all"})`,
-      );
-
-      const params: any = {
-        q: searchQuery,
-        category: "anime",
-        sort: sortBy,
-        order: order,
-      };
-
-      if (subCategory) {
-        params.sub_category = subCategory;
-      }
+      console.log(`[Nyaa] Searching: ${query}`);
 
       const response = await axios.get(NYAA_API, {
-        params,
-        timeout: 15000, // Increased timeout
+        params: {
+          q: query,
+          category: "anime",
+          sub_category: "eng",
+          sort: sortBy,
+          order: order,
+        },
+        timeout: 15000,
       });
 
       const rawResults: NyaaRawEntry[] = response.data.data || [];
 
-      // Detect file extension and codec metadata
       const results: NyaaSearchResult[] = rawResults.map((item) => {
         const title = item.title.toLowerCase();
+        const magnet = item.magnet || "";
+        const hash = this.getHashFromMagnet(magnet) || `temp-${Math.random()}`;
 
         const extMatch =
           title.match(/\.(mkv|mp4|avi|mov)\b/i) ||
@@ -140,9 +107,6 @@ class DownloaderService {
           title.includes("x264") ||
           title.includes("avc") ||
           title.includes("h 264");
-
-        const magnet = item.magnet || "";
-        const hash = this.getHashFromMagnet(magnet) || `temp-${Math.random()}`;
 
         return {
           ...item,
@@ -169,19 +133,6 @@ class DownloaderService {
 
         if (aHasPriority && !bHasPriority) return -1;
         if (!aHasPriority && bHasPriority) return 1;
-
-        if (sortBy === "size") {
-          const parseSize = (s: string) => {
-            const val = parseFloat(s);
-            if (s.includes("GiB") || s.includes("GB")) return val * 1024;
-            if (s.includes("MiB") || s.includes("MB")) return val;
-            return val / 1024;
-          };
-          const sizeA = parseSize(a.size);
-          const sizeB = parseSize(b.size);
-          return order === "desc" ? sizeB - sizeA : sizeA - sizeB;
-        }
-
         return 0;
       });
     } catch (error) {
