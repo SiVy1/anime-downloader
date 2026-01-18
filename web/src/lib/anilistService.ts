@@ -350,12 +350,14 @@ export async function getAnimeById(
     const cached = await redis.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      // Ensure we have the new titleRomaji field, otherwise bypass cache to refresh
-      if (
-        (parsed._id || parsed.anilistId) &&
-        (parsed.titleRomaji || persist === false)
-      ) {
-        return parsed as IAnime;
+      // ONLY return from cache if:
+      // 1. It's a preview request (persist=false)
+      // 2. OR it's already in the library
+      if (!persist || parsed.inLibrary) {
+        // Ensure we have the new titleRomaji field, otherwise bypass cache to refresh
+        if (parsed.titleRomaji) {
+          return parsed as IAnime;
+        }
       }
     }
 
