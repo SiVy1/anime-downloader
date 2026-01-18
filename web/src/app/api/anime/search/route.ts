@@ -27,7 +27,22 @@ export async function GET(req: NextRequest) {
     const augmentedResults = results.map((r) => {
       const local = existingAnime.find((a) => a.anilistId === r.id);
       return {
-        ...r,
+        id: r.id,
+        title: r.title.english || r.title.romaji,
+        title_english: r.title.english,
+        title_romaji: r.title.romaji,
+        images: {
+          jpg: {
+            image_url: r.coverImage?.large,
+            large_image_url: r.coverImage?.extraLarge || r.coverImage?.large,
+          },
+        },
+        synopsis: r.description?.replace(/<[^>]*>/g, "").slice(0, 300) || "",
+        score: r.averageScore ? r.averageScore / 10 : null,
+        episodes: r.episodes,
+        type: r.format,
+        status: r.status,
+        genres: r.genres || [],
         inLibrary: !!local,
         localFolderName: local?.localFolderName || null,
       };
