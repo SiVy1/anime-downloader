@@ -18,6 +18,7 @@ export function useVideoPlayer(folder: string) {
   const [subtitles, setSubtitles] = useState<any[]>([]);
   const [internalSubs, setInternalSubs] = useState<any[]>([]);
   const [activeSub, setActiveSub] = useState<string | null>(null);
+  const [subOffset, setSubOffset] = useState(0);
   const [isSearchingSubs, setIsSearchingSubs] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
 
@@ -145,8 +146,8 @@ export function useVideoPlayer(folder: string) {
     fetchSkipTimes();
   }, [animeInfo?.mal_id, currentFile, episodes, duration]);
 
-  const handleDurationChange = (detail: { duration: number }) => {
-    setDuration(detail.duration);
+  const handleDurationChange = (duration: number) => {
+    setDuration(duration);
   };
 
   const handleTimeUpdate = (detail: { currentTime: number }) => {
@@ -298,6 +299,8 @@ export function useVideoPlayer(folder: string) {
     internalSubs,
     activeSub,
     setActiveSub,
+    subOffset,
+    setSubOffset,
     isSearchingSubs,
     showSubModal,
     setShowSubModal,

@@ -1,10 +1,31 @@
-import React from "react";
-import { ChevronRight } from "lucide-react";
-import { MediaPlayer, MediaProvider, Track } from "@vidstack/react";
+import React, { useState } from "react";
 import {
-  DefaultVideoLayout,
-  defaultLayoutIcons,
-} from "@vidstack/react/player/layouts/default";
+  ChevronRight,
+  Play,
+  Pause,
+  RotateCcw,
+  RotateCw,
+  Volume2,
+  Settings,
+  Maximize,
+  ListVideo,
+} from "lucide-react";
+import {
+  MediaPlayer,
+  MediaProvider,
+  Track,
+  Controls,
+  TimeSlider,
+  VolumeSlider,
+  PlayButton,
+  SeekButton,
+  MuteButton,
+  FullscreenButton,
+  CaptionButton,
+  Time,
+  Gesture,
+} from "@vidstack/react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface VideoPlayerProps {
   playerRef: any;
@@ -20,6 +41,7 @@ interface VideoPlayerProps {
   folder: string;
   onTimeUpdate: (detail: { currentTime: number }) => void;
   onDurationChange: (duration: number) => void;
+  onToggleSidebar: () => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -36,9 +58,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   folder,
   onTimeUpdate,
   onDurationChange,
+  onToggleSidebar,
 }) => {
+  const [controlsVisible, setControlsVisible] = useState(false);
+
   return (
-    <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto">
+    <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto group/player">
       {currentFile ? (
         <MediaPlayer
           key={`${currentFile}-${subsLoadId}`}
@@ -51,32 +76,64 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           minLiveDVRWindow={streamType.includes("live") ? 1 : undefined}
           onTimeUpdate={onTimeUpdate}
           onDurationChange={onDurationChange}
+          onControlsChange={(visible) => setControlsVisible(visible)}
+          className="w-full h-full"
         >
           <MediaProvider>
-            {activeSkip && (
-              <div className="absolute bottom-24 right-8 z-50 animate-in fade-in slide-in-from-right-4 duration-300">
-                <button
-                  onClick={() => {
-                    if (playerRef.current) {
-                      playerRef.current.currentTime =
-                        activeSkip.interval.endTime;
-                    }
-                  }}
-                  className="flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-2xl border border-white/20 transition-all group active:scale-95"
+            <Gesture event="pointerup" action="toggle:paused" />
+            <Gesture event="dblpointerup" action="toggle:fullscreen" />
+            <Gesture event="dblpointerup" action="seek:-10" />
+            <Gesture event="dblpointerup" action="seek:10" />
+
+            {/* Cinematic Vignette */}
+            <AnimatePresence>
+              {controlsVisible && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Custom Skip Intro/Outro */}
+            <AnimatePresence>
+              {activeSkip && (
+                <motion.div
+                  initial={{ x: 40, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: 40, opacity: 0 }}
+                  transition={{ type: "spring", damping: 20 }}
+                  className="absolute bottom-32 right-8 z-50"
                 >
-                  <div className="flex flex-col items-start">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-                      Wykryto{" "}
-                      {activeSkip.skipType === "op" ? "Opening" : "Ending"}
-                    </span>
-                    <span className="text-sm font-black uppercase italic">
-                      Skip {activeSkip.skipType === "op" ? "Intro" : "Outro"}
-                    </span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={() => {
+                      if (playerRef.current) {
+                        playerRef.current.currentTime =
+                          activeSkip.interval.endTime;
+                      }
+                    }}
+                    className="flex items-center gap-4 pl-6 pr-4 py-4 bg-white text-black hover:bg-blue-500 hover:text-white rounded-3xl shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 transition-all group active:scale-95"
+                  >
+                    <div className="flex flex-col items-start leading-none">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 group-hover:opacity-60 transition-opacity">
+                        Wykryto{" "}
+                        {activeSkip.skipType === "op" ? "Opening" : "Ending"}
+                      </span>
+                      <span className="text-base font-black uppercase italic tracking-tighter mt-0.5">
+                        Skip {activeSkip.skipType === "op" ? "Intro" : "Outro"}
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-black/5 group-hover:bg-white/10 flex items-center justify-center transition-colors">
+                      <ChevronRight className="w-6 h-6 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Chapters & Subs */}
             {malId && epNum && (
               <Track
                 key={`chapters-${malId}-${epNum}`}
@@ -108,7 +165,104 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
             ))}
           </MediaProvider>
-          <DefaultVideoLayout icons={defaultLayoutIcons} />
+
+          {/* Custom TV-inspired OSD */}
+          <div
+            className={`media-controls absolute inset-0 z-20 flex flex-col justify-end p-8 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          >
+            {/* Top Bar: Title & Playlist Toggle */}
+            <div className="absolute top-0 left-0 right-0 p-8 flex items-center justify-between pointer-events-auto">
+              <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={controlsVisible ? { y: 0, opacity: 1 } : {}}
+                className="flex items-center gap-4"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+                  <Play className="w-5 h-5 fill-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black uppercase italic tracking-tight text-white/90 leading-none">
+                    {currentFile
+                      ?.split("/")
+                      .pop()
+                      ?.replace(/\.(mkv|mp4|avi|mov)$/i, "")}
+                  </h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 mt-1">
+                    Streaming w jakości HD
+                  </p>
+                </div>
+              </motion.div>
+
+              <button
+                onClick={onToggleSidebar}
+                className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all group"
+              >
+                <ListVideo className="w-6 h-6 group-hover:scale-110 transition-transform" />
+              </button>
+            </div>
+
+            {/* Bottom Bar: Timeline & Controls */}
+            <div className="flex flex-col gap-6 pointer-events-auto">
+              <TimeSlider.Root className="w-full h-1.5 group/slider cursor-pointer">
+                <TimeSlider.Track className="relative w-full h-full bg-white/10 rounded-full overflow-hidden">
+                  <TimeSlider.TrackFill className="absolute h-full bg-blue-500 rounded-full" />
+                </TimeSlider.Track>
+                <TimeSlider.Thumb className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover/slider:opacity-100 transition-opacity shadow-lg" />
+              </TimeSlider.Root>
+
+              <Controls.Group className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <PlayButton className="w-12 h-12 rounded-2xl bg-white text-black hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all">
+                    <Play className="w-6 h-6 fill-current vds-play-icon" />
+                    <Pause className="w-6 h-6 fill-current vds-pause-icon" />
+                  </PlayButton>
+                  <SeekButton
+                    seconds={-10}
+                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </SeekButton>
+                  <SeekButton
+                    seconds={10}
+                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors"
+                  >
+                    <RotateCw className="w-5 h-5" />
+                  </SeekButton>
+                </div>
+
+                <Time
+                  className="text-xs font-black tracking-widest text-white/60"
+                  type="current"
+                />
+                <div className="w-px h-4 bg-white/10" />
+                <Time
+                  className="text-xs font-black tracking-widest text-white/60"
+                  type="duration"
+                />
+
+                <div className="flex-1" />
+
+                <div className="flex items-center gap-4 px-4 py-2 bg-white/5 rounded-2xl border border-white/5">
+                  <MuteButton className="hover:text-blue-500 transition-colors">
+                    <Volume2 className="w-5 h-5" />
+                  </MuteButton>
+                  <VolumeSlider.Root className="w-24 h-1.5 group/volume cursor-pointer">
+                    <VolumeSlider.Track className="relative w-full h-full bg-white/10 rounded-full overflow-hidden">
+                      <VolumeSlider.TrackFill className="absolute h-full bg-blue-500 rounded-full" />
+                    </VolumeSlider.Track>
+                  </VolumeSlider.Root>
+                </div>
+
+                <CaptionButton className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors">
+                  <Settings className="w-5 h-5" />
+                </CaptionButton>
+
+                <FullscreenButton className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all">
+                  <Maximize className="w-5 h-5" />
+                </FullscreenButton>
+              </Controls.Group>
+            </div>
+          </div>
         </MediaPlayer>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-white/5 to-transparent">

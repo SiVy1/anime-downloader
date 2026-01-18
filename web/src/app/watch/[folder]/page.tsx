@@ -3,12 +3,14 @@
 import { ArrowLeft, Subtitles } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { PlaylistSidebar } from "@/components/player/PlaylistSidebar";
 import { PlayerInfo } from "@/components/player/PlayerInfo";
 import { SubtitleModal } from "@/components/player/SubtitleModal";
-import { TorrentModal } from "@/components/anime/TorrentModal"; // Reusing the one from Task 1
+import { TorrentModal } from "@/components/anime/TorrentModal";
 
 export default function WatchPage() {
   const { folder } = useParams();
@@ -25,6 +27,9 @@ export default function WatchPage() {
     subtitles,
     internalSubs,
     activeSub,
+    setActiveSub,
+    subOffset,
+    setSubOffset,
     isSearchingSubs,
     showSubModal,
     setShowSubModal,
@@ -52,6 +57,8 @@ export default function WatchPage() {
     searchTorrentsForEpisode,
     startDownload,
   } = useVideoPlayer(folder as string);
+
+  const [showSidebar, setShowSidebar] = useState(true);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 overflow-hidden flex flex-col">
@@ -92,8 +99,10 @@ export default function WatchPage() {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden">
-        <div className="lg:col-span-3 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 flex overflow-hidden">
+        <div
+          className={`flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar transition-all duration-500 ${showSidebar ? "lg:mr-0" : "lg:mr-0"}`}
+        >
           <VideoPlayer
             playerRef={playerRef}
             currentFile={currentFile}
@@ -109,6 +118,8 @@ export default function WatchPage() {
               ?.number?.toString()}
             folder={decodedFolder}
             onTimeUpdate={handleTimeUpdate}
+            onDurationChange={handleDurationChange}
+            onToggleSidebar={() => setShowSidebar(!showSidebar)}
           />
 
           <PlayerInfo
@@ -132,16 +143,28 @@ export default function WatchPage() {
           />
         </div>
 
-        <PlaylistSidebar
-          episodes={episodes}
-          currentFile={currentFile}
-          onSelect={(file) => {
-            setCurrentFile(file);
-          }}
-          onDownload={searchTorrentsForEpisode}
-          downloadingFiles={downloadingFiles}
-          loading={loading}
-        />
+        <AnimatePresence>
+          {showSidebar && (
+            <motion.div
+              initial={{ x: 320, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 320, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="hidden lg:block lg:col-span-1 border-l border-white/5 bg-[#080808]"
+            >
+              <PlaylistSidebar
+                episodes={episodes}
+                currentFile={currentFile}
+                onSelect={(file) => {
+                  setCurrentFile(file);
+                }}
+                onDownload={searchTorrentsForEpisode}
+                downloadingFiles={downloadingFiles}
+                loading={loading}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {showSubModal && (
@@ -150,6 +173,8 @@ export default function WatchPage() {
           isSearching={isSearchingSubs}
           onSelect={selectSubtitle}
           onClose={() => setShowSubModal(false)}
+          currentOffset={subOffset}
+          onOffsetChange={setSubOffset}
         />
       )}
 
