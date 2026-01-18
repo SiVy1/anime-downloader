@@ -13,7 +13,7 @@ export function useVideoPlayer(folder: string) {
   // Jikan state
   const [animeInfo, setAnimeInfo] = useState<any | null>(null);
   const [episodesInfo, setEpisodesInfo] = useState<any[]>([]);
-  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [loadingInfo, setLoadingInfo] = useState(false);
 
   // Subtitles state
   const [subtitles, setSubtitles] = useState<any[]>([]);
@@ -100,8 +100,11 @@ export function useVideoPlayer(folder: string) {
   const [codecInfo, setCodecInfo] = useState<any>(null);
   const [subsLoadId, setSubsLoadId] = useState(0);
 
+  const lastFileRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (currentFile) {
+    if (currentFile && currentFile !== lastFileRef.current) {
+      lastFileRef.current = currentFile;
       setInternalSubs([]);
       setCodecInfo(null);
       setActiveSub(null);
@@ -119,10 +122,10 @@ export function useVideoPlayer(folder: string) {
           if (data.codecs) setCodecInfo(data.codecs);
         })
         .catch((err) => {
-          toast.error("Błąd podczas pobierania metadanych pliku.");
+          console.error("Metadata error:", err);
         });
     }
-  }, [currentFile, folder]);
+  }, [currentFile, decodedFolder]);
 
   // Skip Times
   useEffect(() => {
@@ -151,17 +154,22 @@ export function useVideoPlayer(folder: string) {
     fetchSkipTimes();
   }, [animeInfo?.anilistId, currentFile, episodes, duration]);
 
-  const handleDurationChange = (duration: number) => {
+  const handleDurationChange = useCallback((duration: number) => {
     setDuration(duration);
-  };
+  }, []);
 
-  const handleTimeUpdate = (detail: { currentTime: number }) => {
-    const time = detail.currentTime;
-    const skip = skipTimes.find(
-      (s) => time >= s.interval.startTime && time <= s.interval.endTime,
-    );
-    setActiveSkip(skip || null);
-  };
+  const handleTimeUpdate = useCallback(
+    (detail: { currentTime: number }) => {
+      const time = detail.currentTime;
+      const skip = skipTimes.find(
+        (s) => time >= s.interval.startTime && time <= s.interval.endTime,
+      );
+      if (activeSkip?._id !== skip?._id) {
+        setActiveSkip(skip || null);
+      }
+    },
+    [skipTimes, activeSkip],
+  );
 
   const isMp4 = currentFile?.toLowerCase().endsWith(".mp4");
   const canDirectPlay = codecInfo ? codecInfo.canDirectPlay : isMp4;

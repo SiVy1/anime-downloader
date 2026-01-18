@@ -44,12 +44,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto group/player">
       {currentFile ? (
         <MediaPlayer
-          key={`${currentFile}-${subsLoadId}`}
+          key={currentFile}
           ref={playerRef}
           title={currentFile}
           src={streamUrl}
           crossOrigin
           playsInline
+          autoplay
           streamType={streamType === "live" ? "live:dvr" : "on-demand"}
           minLiveDVRWindow={streamType.includes("live") ? 1 : undefined}
           onTimeUpdate={onTimeUpdate}

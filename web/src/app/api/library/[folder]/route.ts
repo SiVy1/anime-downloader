@@ -35,9 +35,8 @@ export async function GET(
     }
 
     let anime = animeDoc;
-    if (animeDoc?.anilistId) {
-      // Use getAnimeById to ensure we have up-to-date metadata (like titleRomaji)
-      // This will trigger a refresh if the field is missing due to the recent update
+    if (animeDoc?.anilistId && !animeDoc.titleRomaji) {
+      // Refresh only if metadata is likely missing (recent update)
       const updated = await getAnimeById(animeDoc.anilistId, true);
       if (updated) anime = updated;
     }
