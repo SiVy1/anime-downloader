@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  convertMkvToMp4,
   getConversionProgress,
   hasConvertedVersion,
   cancelConversion,
 } from "@/lib/conversionService";
+import { addConversionJob, conversionQueue } from "@/lib/queueService";
 
 /**
  * POST /api/convert/[...path] - Start conversion of MKV to MP4
@@ -34,36 +34,19 @@ export async function POST(
     });
   }
 
-  // Check if conversion in progress
-  const progress = getConversionProgress(filePath);
-  if (progress !== null) {
+  // Add job to BullMQ
+  try {
+    const job = await addConversionJob(filePath);
     return NextResponse.json({
-      status: "in_progress",
-      progress,
+      status: "started",
+      jobId: job.id,
+      message: "Conversion scheduled in BullMQ",
     });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  // Start conversion (non-blocking)
-  console.log(`[API] Starting conversion for: ${filePath}`);
-
-  // Run conversion in background
-  convertMkvToMp4(filePath)
-    .then((result) => {
-      if (result.success) {
-        console.log(`[API] Conversion completed: ${filePath}`);
-      } else {
-        console.error(`[API] Conversion failed: ${result.error}`);
-      }
-    })
-    .catch((err) => {
-      console.error(`[API] Conversion error: ${err.message}`);
-    });
-
-  return NextResponse.json({
-    status: "started",
-    message: "Conversion started in background",
-  });
 }
+
 
 export async function GET(
   req: NextRequest,
@@ -80,12 +63,23 @@ export async function GET(
     });
   }
 
-  // Check progress
+  // Check in-memory progress
   const progress = getConversionProgress(filePath);
   if (progress !== null) {
     return NextResponse.json({
       status: "in_progress",
       progress,
+    });
+  }
+
+  // Check BullMQ progress
+  const jobId = `convert-${filePath.replace(/\//g, "-")}`;
+  const job = await conversionQueue.getJob(jobId);
+  if (job) {
+    const state = await job.getState();
+    return NextResponse.json({
+      status: state === "active" ? "in_progress" : "queued",
+      progress: job.progress || 0,
     });
   }
 
@@ -102,10 +96,19 @@ export async function DELETE(
   const { path: pathSegments } = await params;
   const filePath = pathSegments.join("/");
 
+  // Cancel in-memory if active
   const cancelled = cancelConversion(filePath);
 
+  // Try to remove from BullMQ
+  const jobId = `convert-${filePath.replace(/\//g, "-")}`;
+  const job = await conversionQueue.getJob(jobId);
+  if (job) {
+    await job.remove();
+  }
+
   return NextResponse.json({
-    cancelled,
-    message: cancelled ? "Conversion cancelled" : "No active conversion found",
+    cancelled: cancelled || !!job,
+    message: (cancelled || job) ? "Conversion cancelled" : "No active conversion found",
   });
 }
+

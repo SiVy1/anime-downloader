@@ -1,8 +1,11 @@
 import { promises as fsp } from "fs";
 import path from "path";
 import { ARIA2_PATH, downloaderService } from "./downloader";
-import { convertMkvToMp4, hasConvertedVersion } from "./conversionService";
+import { hasConvertedVersion } from "./conversionService";
 import { getAllFiles, exists } from "./utils/filesystem";
+import { addConversionJob } from "./queueService";
+import { initConversionWorker } from "./workers/conversionWorker";
+
 
 /**
  * AutoConverter - Background service that monitors for new MKV files (Asynchronous)
@@ -10,7 +13,7 @@ import { getAllFiles, exists } from "./utils/filesystem";
 class AutoConverter {
   private isRunning = false;
   private interval: NodeJS.Timeout | null = null;
-  private queue: string[] = [];
+  private workerInitialized = false;
 
   /**
    * Start the monitoring loop
@@ -19,6 +22,12 @@ class AutoConverter {
     if (this.isRunning) return;
     this.isRunning = true;
     console.log("[AUTO-CONVERT] Service started monitoring:", ARIA2_PATH);
+
+    // Initialize worker if not already done
+    if (!this.workerInitialized) {
+      initConversionWorker();
+      this.workerInitialized = true;
+    }
 
     // Initial scan and then every 30 seconds
     this.scan();
@@ -67,12 +76,9 @@ class AutoConverter {
             continue;
           }
 
-          // Check if already converted or in queue
-          if (
-            !(await hasConvertedVersion(mkvPath)) &&
-            !this.queue.includes(relativePath)
-          ) {
-            console.log(`[AUTO-CONVERT] Found finished MKV: ${relativePath}`);
+          // Check if already converted
+          if (!(await hasConvertedVersion(mkvPath))) {
+            console.log(`[AUTO-CONVERT] Scheduling job for MKV: ${relativePath}`);
             this.addToQueue(relativePath);
           }
         }
@@ -83,29 +89,27 @@ class AutoConverter {
   }
 
   /**
-   * Add a file to the conversion queue
+   * Add a file to the conversion queue (BullMQ)
    */
   private async addToQueue(relativePath: string) {
-    this.queue.push(relativePath);
-
-    // Start conversion in the background
-    convertMkvToMp4(relativePath)
-      .then((result) => {
-        if (result.success) {
-          console.log(`[AUTO-CONVERT] Successfully converted: ${relativePath}`);
-        } else {
-          console.error(
-            `[AUTO-CONVERT] Failed to convert ${relativePath}:`,
-            result.error,
-          );
-        }
-      })
-      .finally(() => {
-        // Remove from queue
-        this.queue = this.queue.filter((q) => q !== relativePath);
-      });
+    try {
+      await addConversionJob(relativePath);
+    } catch (err: any) {
+      console.error(`[AUTO-CONVERT] Failed to add job to BullMQ:`, err.message);
+    }
   }
 }
 
-// Export as singleton
-export const autoConverter = new AutoConverter();
+
+// Export as singleton using global to prevent multiple instances during HMR
+const globalAutoConverter = global as unknown as {
+  autoConverter: AutoConverter | undefined;
+};
+
+export const autoConverter =
+  globalAutoConverter.autoConverter || new AutoConverter();
+
+if (process.env.NODE_ENV !== "production") {
+  globalAutoConverter.autoConverter = autoConverter;
+}
+

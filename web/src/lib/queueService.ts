@@ -10,6 +10,7 @@ import { getRedisConnectionOpts } from "./db";
 // Singleton pattern for Next.js HMR
 const globalForBull = global as unknown as {
   pvrQueue: Queue | undefined;
+  conversionQueue: Queue | undefined;
 };
 
 // BullMQ requires maxRetriesPerRequest: null
@@ -24,8 +25,15 @@ export const pvrQueue =
     connection: connectionOpts,
   });
 
+export const conversionQueue =
+  globalForBull.conversionQueue ??
+  new Queue("conversion-queue", {
+    connection: connectionOpts,
+  });
+
 if (process.env.NODE_ENV !== "production") {
   globalForBull.pvrQueue = pvrQueue;
+  globalForBull.conversionQueue = conversionQueue;
 }
 
 /**
@@ -49,3 +57,27 @@ export async function addPVRJob() {
   console.log(`[Queue] PVR Job added: ${job.id}`);
   return job;
 }
+
+/**
+ * Add a video conversion job to the queue
+ */
+export async function addConversionJob(relativePath: string) {
+  const job = await conversionQueue.add(
+    "convert-video",
+    { relativePath },
+    {
+      jobId: `convert-${relativePath.replace(/\//g, "-")}`, // Deduplicate based on path
+      attempts: 2,
+      backoff: {
+        type: "exponential",
+        delay: 10000,
+      },
+      removeOnComplete: true,
+      removeOnFail: false,
+    },
+  );
+
+  console.log(`[Queue] Conversion Job added: ${job.id} (${relativePath})`);
+  return job;
+}
+

@@ -5,7 +5,8 @@ import { promises as fsp } from "fs";
 import os from "os";
 import { ARIA2_PATH } from "./downloader";
 import { FFprobeMetadata, FFprobeStream } from "./types/ffprobe";
-import { sanitizeFolderName } from "./utils/filesystem";
+import { sanitizeFolderName, exists } from "./utils/filesystem";
+
 
 export interface ConversionProgress {
   percent: number;
@@ -102,22 +103,22 @@ export async function convertMkvToMp4(
 
   // Check if conversion in progress
   if (activeConversions.has(inputPath)) {
+    console.log(`[CONVERT] Already in progress: ${relativePath}`);
     return { success: false, error: "Conversion already in progress" };
   }
+
+  // Mark as active IMMEDIATELY to prevent race conditions
+  activeConversions.set(inputPath, { progress: 0, command: null });
 
   // Ensure output directory exists
   const outputDir = path.dirname(outputPath);
   try {
-    if (
-      !(await fsp
-        .access(outputDir)
-        .then(() => true)
-        .catch(() => false))
-    ) {
+    if (!(await exists(outputDir))) {
       await fsp.mkdir(outputDir, { recursive: true });
     }
   } catch (err: any) {
     console.error(`[CONVERT DIR ERROR] ${err.message}`);
+    activeConversions.delete(inputPath);
     return { success: false, error: `Cannot create directory: ${outputDir}` };
   }
 
@@ -128,9 +129,10 @@ export async function convertMkvToMp4(
     console.error(
       `[CONVERT PERMISSION ERROR] Cannot read input file ${inputPath}: ${err.message}`,
     );
+    activeConversions.delete(inputPath);
     return {
       success: false,
-      error: `No read permission for file (root ownership?): ${path.basename(inputPath)}`,
+      error: `No read permission for file: ${path.basename(inputPath)}`,
     };
   }
 
@@ -143,16 +145,17 @@ export async function convertMkvToMp4(
       });
     },
   ).catch((err) => {
-    console.error("[CONVERT PROBE ERROR]", err);
+    console.error(`[CONVERT PROBE ERROR] ${inputPath}:`, err.message);
     return null;
   });
 
-  const videoStream: FFprobeStream | undefined = metadata?.streams?.find(
-    (s) => s.codec_type === "video",
-  );
-  const audioStream: FFprobeStream | undefined = metadata?.streams?.find(
-    (s) => s.codec_type === "audio",
-  );
+  if (!metadata) {
+    activeConversions.delete(inputPath);
+    return { success: false, error: "Failed to probe file" };
+  }
+
+  const videoStream = metadata.streams?.find((s) => s.codec_type === "video");
+  const audioStream = metadata.streams?.find((s) => s.codec_type === "audio");
 
   const canCopyVideo = videoStream?.codec_name === "h264";
   const canCopyAudio = audioStream?.codec_name === "aac";
@@ -186,6 +189,7 @@ export async function convertMkvToMp4(
       ])
       .on("start", (commandLine) => {
         console.log(`[CONVERT] Command: ${commandLine}`);
+        // Update with command instance so it can be killed
         activeConversions.set(inputPath, { progress: 0, command });
       })
       .on("progress", (progress) => {
@@ -199,7 +203,7 @@ export async function convertMkvToMp4(
         });
       })
       .on("error", (err) => {
-        console.error(`[CONVERT ERROR] ${err.message}`);
+        console.error(`[CONVERT ERROR] ${relativePath}: ${err.message}`);
         activeConversions.delete(inputPath);
         if (fs.existsSync(tempPath)) {
           fs.unlinkSync(tempPath);
@@ -210,25 +214,15 @@ export async function convertMkvToMp4(
         console.log(`[CONVERT] Completed: ${relativePath}`);
         activeConversions.delete(inputPath);
         try {
-          if (
-            await fsp
-              .access(tempPath)
-              .then(() => true)
-              .catch(() => false)
-          ) {
+          if (await exists(tempPath)) {
             await fsp.rename(tempPath, outputPath);
           }
-          if (
-            await fsp
-              .access(inputPath)
-              .then(() => true)
-              .catch(() => false)
-          ) {
+          if (await exists(inputPath)) {
             await fsp.unlink(inputPath);
             console.log(`[CONVERT] Deleted original MKV: ${inputPath}`);
           }
-        } catch (err) {
-          console.error(`[CONVERT CLEANUP ERROR]`, err);
+        } catch (err: any) {
+          console.error(`[CONVERT CLEANUP ERROR] ${relativePath}:`, err.message);
         }
         resolve({ success: true, outputPath });
       });
@@ -236,6 +230,7 @@ export async function convertMkvToMp4(
     command.save(tempPath);
   });
 }
+
 
 /**
  * Cancel an active conversion
