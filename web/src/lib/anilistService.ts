@@ -466,6 +466,7 @@ export async function getAnimeEpisodes(
           animeId,
           number: i,
           title: streamingEp?.title || `Episode ${i}`,
+          thumbnail: streamingEp?.thumbnail || undefined,
           airedDate: undefined,
           isDownloaded: false,
           watched: false,

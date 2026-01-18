@@ -14,15 +14,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const malId = parseInt(id, 10);
+  const anilistId = parseInt(id, 10);
 
-  if (isNaN(malId)) {
+  if (isNaN(anilistId)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   try {
-    const profile = await getReleaseProfile(malId);
-    return NextResponse.json({ malId, profile });
+    const profile = await getReleaseProfile(anilistId);
+    return NextResponse.json({ anilistId, profile });
   } catch (error) {
     console.error("[ReleaseProfile API] GET Error:", error);
     return NextResponse.json(
@@ -42,16 +42,16 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const malId = parseInt(id, 10);
+  const anilistId = parseInt(id, 10);
 
-  if (isNaN(malId)) {
+  if (isNaN(anilistId)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   try {
     const body = await req.json();
 
-    const anime = await updateReleaseProfile(malId, {
+    const anime = await updateReleaseProfile(anilistId, {
       preferredGroups: body.preferredGroups,
       preferredQuality: body.preferredQuality,
       excludeGroups: body.excludeGroups,
@@ -67,7 +67,7 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      malId: anime.malId,
+      anilistId: anime.anilistId,
       profile: anime.releaseProfile,
     });
   } catch (error) {

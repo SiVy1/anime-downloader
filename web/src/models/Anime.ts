@@ -74,6 +74,7 @@ export interface IEpisode extends Document {
   animeId: mongoose.Types.ObjectId;
   number: number;
   title: string;
+  thumbnail?: string; // Episode thumbnail from AniList streamingEpisodes
   airedDate?: string;
   localPath?: string; // Relative path to ARIA2_PATH
   isDownloaded: boolean;
@@ -85,6 +86,7 @@ const EpisodeSchema: Schema = new Schema({
   animeId: { type: Schema.Types.ObjectId, ref: "Anime", required: true },
   number: { type: Number, required: true },
   title: { type: String },
+  thumbnail: String,
   airedDate: String,
   localPath: String,
   isDownloaded: { type: Boolean, default: false },

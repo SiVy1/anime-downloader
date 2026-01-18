@@ -96,7 +96,7 @@ export function cleanAnimeName(name: string): string {
  */
 function jikanToAnimeDoc(jikanData: JikanAnime): Partial<IAnime> {
   return {
-    malId: jikanData.mal_id,
+    anilistId: jikanData.mal_id,
     title: jikanData.title,
     images: {
       webp: {
@@ -224,14 +224,14 @@ export async function getAnimeById(id: number): Promise<IAnime | null> {
     if (cached) {
       const parsed = JSON.parse(cached);
       // If cached data has _id, it's from our DB, return as-is
-      if (parsed._id || parsed.malId) {
+      if (parsed._id || parsed.anilistId) {
         return parsed as IAnime;
       }
     }
 
     // Step 2: Check MongoDB (persistent storage)
     await connectDB();
-    const dbAnime = await Anime.findOne({ malId: id });
+    const dbAnime = await Anime.findOne({ anilistId: id });
     if (dbAnime) {
       // Cache the DB result in Redis for future fast access
       await redis.set(cacheKey, JSON.stringify(dbAnime), "EX", 86400);
@@ -249,7 +249,7 @@ export async function getAnimeById(id: number): Promise<IAnime | null> {
     // Step 4: Upsert to MongoDB (Write-Through)
     const animeDoc = jikanToAnimeDoc(jikanData);
     const savedAnime = await Anime.findOneAndUpdate(
-      { malId: id },
+      { anilistId: id },
       { $set: animeDoc },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
@@ -275,11 +275,11 @@ export async function getAnimeById(id: number): Promise<IAnime | null> {
  * 5. Return data
  */
 export async function getAnimeEpisodes(
-  malId: number,
+  anilistId: number,
   animeId?: string,
 ): Promise<IEpisode[]> {
   const redis = getRedis();
-  const cacheKey = `jikan:episodes:${malId}`;
+  const cacheKey = `jikan:episodes:${anilistId}`;
 
   try {
     await connectDB();
@@ -292,8 +292,8 @@ export async function getAnimeEpisodes(
         return dbEpisodes;
       }
     } else {
-      // Try to find anime by malId to get animeId
-      const anime = await Anime.findOne({ malId });
+      // Try to find anime by anilistId to get animeId
+      const anime = await Anime.findOne({ anilistId });
       if (anime) {
         const dbEpisodes = await Episode.find({ animeId: anime._id }).sort({
           number: 1,
@@ -318,7 +318,9 @@ export async function getAnimeEpisodes(
 
     // Step 3: Fetch from Jikan API
     await throttle();
-    const response = await fetch(`${JIKAN_BASE_URL}/anime/${malId}/episodes`);
+    const response = await fetch(
+      `${JIKAN_BASE_URL}/anime/${anilistId}/episodes`,
+    );
     if (!response.ok) return [];
 
     const data = await response.json();
@@ -352,7 +354,7 @@ export async function getAnimeEpisodes(
       const savedEpisodes = await Episode.find({ animeId }).sort({ number: 1 });
       await redis.set(cacheKey, JSON.stringify(savedEpisodes), "EX", 86400);
       console.log(
-        `[JikanService] Synced ${savedEpisodes.length} episodes for malId ${malId}`,
+        `[JikanService] Synced ${savedEpisodes.length} episodes for anilistId ${anilistId}`,
       );
       return savedEpisodes;
     }
@@ -362,7 +364,7 @@ export async function getAnimeEpisodes(
     return jikanEpisodes as unknown as IEpisode[];
   } catch (error) {
     console.error(
-      `[JikanService] Error fetching episodes for ID ${malId}:`,
+      `[JikanService] Error fetching episodes for ID ${anilistId}:`,
       error,
     );
     return [];
@@ -376,16 +378,16 @@ export async function getAnimeEpisodes(
  * Returns the anime document with episodes synced
  */
 export async function ensureAnimeInLibrary(
-  malId: number,
+  anilistId: number,
 ): Promise<{ anime: IAnime | null; episodes: IEpisode[] }> {
   // getAnimeById now handles the Write-Through pattern
-  const anime = await getAnimeById(malId);
+  const anime = await getAnimeById(anilistId);
   if (!anime) {
     return { anime: null, episodes: [] };
   }
 
   // Get episodes (will sync if needed)
-  const episodes = await getAnimeEpisodes(malId, anime._id.toString());
+  const episodes = await getAnimeEpisodes(anilistId, anime._id.toString());
 
   return { anime, episodes };
 }

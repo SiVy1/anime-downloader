@@ -13,9 +13,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const malId = parseInt(id, 10);
+  const anilistId = parseInt(id, 10);
 
-  if (isNaN(malId)) {
+  if (isNaN(anilistId)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
@@ -26,9 +26,9 @@ export async function POST(
     const body = await req.json().catch(() => null);
 
     if (body && typeof body.subscribed === "boolean") {
-      anime = await setSubscription(malId, body.subscribed);
+      anime = await setSubscription(anilistId, body.subscribed);
     } else {
-      anime = await toggleSubscription(malId);
+      anime = await toggleSubscription(anilistId);
     }
 
     if (!anime) {
@@ -40,7 +40,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      malId: anime.malId,
+      anilistId: anime.anilistId,
       title: anime.title,
       isSubscribed: anime.isSubscribed,
     });
