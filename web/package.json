@@ -17,6 +17,7 @@
     "adm-zip": "^0.5.16",
     "anime-name-tool": "^1.0.6",
     "axios": "^1.13.2",
+    "bullmq": "^5.66.5",
     "fluent-ffmpeg": "^2.1.3",
     "framer-motion": "^12.26.2",
     "ioredis": "^5.9.2",
