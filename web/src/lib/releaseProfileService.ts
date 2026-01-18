@@ -73,10 +73,10 @@ export async function updateGlobalDefaultProfile(
  * Falls back to global default if anime has no custom profile
  */
 export async function getReleaseProfile(
-  malId: number,
+  anilistId: number,
 ): Promise<IReleaseProfile> {
   await connectDB();
-  const anime = await Anime.findOne({ malId });
+  const anime = await Anime.findOne({ anilistId });
 
   if (anime?.releaseProfile) {
     return anime.releaseProfile;
@@ -89,13 +89,13 @@ export async function getReleaseProfile(
  * Update release profile for a specific anime
  */
 export async function updateReleaseProfile(
-  malId: number,
+  anilistId: number,
   profile: Partial<IReleaseProfile>,
 ): Promise<IAnime | null> {
   await connectDB();
 
   const anime = await Anime.findOneAndUpdate(
-    { malId },
+    { anilistId },
     {
       $set: {
         "releaseProfile.preferredGroups": profile.preferredGroups,

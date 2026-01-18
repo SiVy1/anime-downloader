@@ -17,7 +17,7 @@ export const DEFAULT_RELEASE_PROFILE: IReleaseProfile = {
 };
 
 export interface IAnime extends Document {
-  malId: number;
+  anilistId: number;
   title: string;
   images: {
     webp: {
@@ -40,7 +40,7 @@ export interface IAnime extends Document {
 }
 
 const AnimeSchema: Schema = new Schema({
-  malId: { type: Number, required: true, unique: true },
+  anilistId: { type: Number, required: true, unique: true },
   title: { type: String, required: true },
   images: {
     webp: {

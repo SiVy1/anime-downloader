@@ -22,7 +22,7 @@ const MIN_CHECK_DELAY = 30000; // 30 seconds
 const lastCheckTimes = new Map<number, number>();
 
 export interface PVRCheckResult {
-  malId: number;
+  anilistId: number;
   title: string;
   episodesFound: number;
   episodesDownloaded: number;
@@ -41,10 +41,10 @@ export async function getSubscribedAnime(): Promise<IAnime[]> {
  * Toggle subscription status for an anime
  */
 export async function toggleSubscription(
-  malId: number,
+  anilistId: number,
 ): Promise<IAnime | null> {
   await connectDB();
-  const anime = await Anime.findOne({ malId });
+  const anime = await Anime.findOne({ anilistId });
 
   if (!anime) return null;
 
@@ -61,12 +61,12 @@ export async function toggleSubscription(
  * Set subscription status explicitly
  */
 export async function setSubscription(
-  malId: number,
+  anilistId: number,
   subscribed: boolean,
 ): Promise<IAnime | null> {
   await connectDB();
   const anime = await Anime.findOneAndUpdate(
-    { malId },
+    { anilistId },
     { $set: { isSubscribed: subscribed } },
     { new: true },
   );
@@ -80,8 +80,8 @@ export async function setSubscription(
 /**
  * Check if we should wait before checking this anime again
  */
-function shouldThrottle(malId: number): boolean {
-  const lastCheck = lastCheckTimes.get(malId);
+function shouldThrottle(anilistId: number): boolean {
+  const lastCheck = lastCheckTimes.get(anilistId);
   if (!lastCheck) return false;
   return Date.now() - lastCheck < MIN_CHECK_DELAY;
 }
@@ -153,7 +153,7 @@ export async function checkAnimeForNewEpisodes(
   anime: IAnime,
 ): Promise<PVRCheckResult> {
   const result: PVRCheckResult = {
-    malId: anime.malId,
+    anilistId: anime.anilistId,
     title: anime.title,
     episodesFound: 0,
     episodesDownloaded: 0,
@@ -161,13 +161,13 @@ export async function checkAnimeForNewEpisodes(
   };
 
   // Throttle checks
-  if (shouldThrottle(anime.malId)) {
+  if (shouldThrottle(anime.anilistId)) {
     result.errors.push("Throttled - checked too recently");
     return result;
   }
 
   // Get release profile
-  const profile = await getReleaseProfile(anime.malId);
+  const profile = await getReleaseProfile(anime.anilistId);
 
   if (!profile.autoDownload) {
     result.errors.push("Auto-download disabled in profile");
@@ -186,7 +186,7 @@ export async function checkAnimeForNewEpisodes(
   );
 
   // Update last check time
-  lastCheckTimes.set(anime.malId, Date.now());
+  lastCheckTimes.set(anime.anilistId, Date.now());
 
   // Check for each missing episode (limit to first 3 to avoid rate limiting)
   const toCheck = missingEpisodes.slice(0, 3);
@@ -227,7 +227,7 @@ export async function checkAnimeForNewEpisodes(
 
   // Update last check time in database
   await Anime.updateOne(
-    { malId: anime.malId },
+    { anilistId: anime.anilistId },
     { $set: { lastEpisodeCheck: new Date() } },
   );
 
@@ -255,7 +255,7 @@ export async function runPVRCycle(): Promise<PVRCheckResult[]> {
     } catch (error: any) {
       console.error(`[PVR] Error checking ${anime.title}:`, error);
       results.push({
-        malId: anime.malId,
+        anilistId: anime.anilistId,
         title: anime.title,
         episodesFound: 0,
         episodesDownloaded: 0,
@@ -279,14 +279,14 @@ export async function runPVRCycle(): Promise<PVRCheckResult[]> {
 export async function getPVRStatus(): Promise<{
   subscribedCount: number;
   lastCycleTime?: Date;
-  anime: Array<{ malId: number; title: string; lastCheck?: Date }>;
+  anime: Array<{ anilistId: number; title: string; lastCheck?: Date }>;
 }> {
   const subscribedAnime = await getSubscribedAnime();
 
   return {
     subscribedCount: subscribedAnime.length,
     anime: subscribedAnime.map((a) => ({
-      malId: a.malId,
+      anilistId: a.anilistId,
       title: a.title,
       lastCheck: a.lastEpisodeCheck,
     })),

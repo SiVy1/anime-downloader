@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureAnimeInLibrary } from "@/lib/jikanService";
+import { ensureAnimeInLibrary } from "@/lib/anilistService";
 
 /**
  * POST /api/anime/[id]/add
  *
  * Add anime to library - thin controller.
- * The jikanService.ensureAnimeInLibrary() handles:
+ * The anilistService.ensureAnimeInLibrary() handles:
  * - Checking if anime exists in DB
- * - Fetching from Jikan API if missing
+ * - Fetching from AniList GraphQL API if missing
  * - Upserting to MongoDB (Write-Through)
  * - Syncing episodes
  */
@@ -16,19 +16,19 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const malId = parseInt(id, 10);
+  const anilistId = parseInt(id, 10);
 
-  if (isNaN(malId)) {
+  if (isNaN(anilistId)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   try {
     // Service handles all data fetching and persistence
-    const { anime, episodes } = await ensureAnimeInLibrary(malId);
+    const { anime, episodes } = await ensureAnimeInLibrary(anilistId);
 
     if (!anime) {
       return NextResponse.json(
-        { error: "Anime not found on MAL" },
+        { error: "Anime not found on AniList" },
         { status: 404 },
       );
     }

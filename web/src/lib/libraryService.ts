@@ -27,12 +27,12 @@ export interface LinkFolderResult {
  *
  * Uses MongoDB bulkWrite for efficient batch updates instead of N+1 updateOne calls
  *
- * @param malId - MyAnimeList ID of the anime
+ * @param anilistId - MyAnimeList ID of the anime
  * @param folderName - Name of the folder in ARIA2_PATH
  * @returns Result object with link statistics
  */
 export async function linkFolderToAnime(
-  malId: number,
+  anilistId: number,
   folderName: string,
 ): Promise<LinkFolderResult> {
   if (!ARIA2_PATH) {
@@ -48,7 +48,7 @@ export async function linkFolderToAnime(
   await connectDB();
 
   // 1. Find the anime in database
-  const anime = await Anime.findOne({ malId });
+  const anime = await Anime.findOne({ anilistId });
   if (!anime) {
     return {
       success: false,
@@ -118,7 +118,7 @@ export async function linkFolderToAnime(
   }
 
   console.log(
-    `[LibraryService] Linked folder "${folderName}" to anime ${malId}: ${videoFiles.length} files scanned, ${episodesMapped} episodes mapped`,
+    `[LibraryService] Linked folder "${folderName}" to anime ${anilistId}: ${videoFiles.length} files scanned, ${episodesMapped} episodes mapped`,
   );
 
   return {
@@ -140,10 +140,10 @@ export async function getLibraryAnime(): Promise<IAnime[]> {
 /**
  * Unlink a folder from an anime
  */
-export async function unlinkFolder(malId: number): Promise<boolean> {
+export async function unlinkFolder(anilistId: number): Promise<boolean> {
   await connectDB();
 
-  const anime = await Anime.findOne({ malId });
+  const anime = await Anime.findOne({ anilistId });
   if (!anime) return false;
 
   // Clear folder link

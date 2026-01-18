@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchAnimeFull } from "@/lib/jikanService";
+import { searchAnimeFull } from "@/lib/anilistService";
 import { connectDB } from "@/lib/db";
 import { Anime } from "@/models/Anime";
 
@@ -14,19 +14,18 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    // 1. Search Jikan (Service uses Redis cache internally)
+    // 1. Search AniList (Service uses Redis cache internally)
     const results = await searchAnimeFull(query);
 
-    // 2. We don't save everything to DB yet, only when user clicks an anime.
-    // However, we can check if any of these results already exist in our DB
+    // 2. Check if any of these results already exist in our DB
     // to show badges like "In Library"
-    const malIds = results.map((r) => r.mal_id);
-    const existingAnime = await Anime.find({ malId: { $in: malIds } }).select(
-      "malId localFolderName",
-    );
+    const anilistIds = results.map((r) => r.id);
+    const existingAnime = await Anime.find({
+      anilistId: { $in: anilistIds },
+    }).select("anilistId localFolderName");
 
     const augmentedResults = results.map((r) => {
-      const local = existingAnime.find((a) => a.malId === r.mal_id);
+      const local = existingAnime.find((a) => a.anilistId === r.id);
       return {
         ...r,
         inLibrary: !!local,
