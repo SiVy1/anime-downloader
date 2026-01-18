@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
       const local = existingAnime.find((a) => a.anilistId === r.id);
       return {
         id: r.id,
+        anilistId: r.id,
         title: r.title.english || r.title.romaji,
         titleEnglish: r.title.english,
         titleRomaji: r.title.romaji,
