@@ -18,7 +18,7 @@ import * as path from "path";
 
 // Load environment variables
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/anime-downloader";
+  process.env.MONGODB_URI || "mongodb://localhost:27017/anime";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const ARIA2_PATH = process.env.ARIA2_PATH || "";
 
@@ -64,10 +64,8 @@ async function clearMongoDB() {
     console.log(`📋 Found ${collections.length} collections`);
 
     for (const collection of collections) {
-      const result = await db.collection(collection.name).deleteMany({});
-      console.log(
-        `   - Cleared ${collection.name}: ${result.deletedCount} documents`,
-      );
+      await db.collection(collection.name).drop();
+      console.log(`   - Dropped ${collection.name} (documents + indexes)`);
     }
 
     console.log("✅ MongoDB cleared successfully");
