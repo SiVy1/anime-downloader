@@ -558,7 +558,11 @@ export async function ensureAnimeInLibrary(
     return { anime: null, episodes: [] };
   }
 
-  const episodes = await getAnimeEpisodes(anilistId, anime._id.toString());
+  const episodes = await getAnimeEpisodes(
+    anilistId,
+    anime._id.toString(),
+    true,
+  );
 
   return { anime, episodes };
 }

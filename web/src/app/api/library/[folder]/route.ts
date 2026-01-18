@@ -65,6 +65,9 @@ export async function GET(
       const dbEpisodes = await Episode.find({ animeId: anime._id }).sort({
         number: 1,
       });
+      console.log(
+        `[Library Folder API] Found ${dbEpisodes.length} episodes in DB for anime ${anime.title}`,
+      );
 
       // Sync episodes with local files
       const syncedEpisodes = await Promise.all(
