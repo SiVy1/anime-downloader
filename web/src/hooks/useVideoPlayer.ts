@@ -43,6 +43,9 @@ export function useVideoPlayer(folder: string) {
 
   const playerRef = useRef<any>(null);
 
+  // Track which episodes have been synced to AniList to prevent duplicates
+  const anilistSyncedEpisodes = useRef<Set<number>>(new Set());
+
   const fetchLibraryData = useCallback(async () => {
     try {
       const res = await fetch(`/api/library/${folder}`);
@@ -161,14 +164,56 @@ export function useVideoPlayer(folder: string) {
   const handleTimeUpdate = useCallback(
     (detail: { currentTime: number }) => {
       const time = detail.currentTime;
+
+      // Skip times detection
       const skip = skipTimes.find(
         (s) => time >= s.interval.startTime && time <= s.interval.endTime,
       );
       if (activeSkip?._id !== skip?._id) {
         setActiveSkip(skip || null);
       }
+
+      // AniList progress sync at 85% watch time
+      if (duration > 0 && animeInfo?.anilistId && currentFile) {
+        const watchPercent = (time / duration) * 100;
+        const ep = episodes.find((e) => e.localPath === currentFile);
+        const epNum = ep?.number;
+
+        if (
+          watchPercent >= 85 &&
+          epNum &&
+          !anilistSyncedEpisodes.current.has(epNum)
+        ) {
+          // Mark as synced to prevent duplicate calls
+          anilistSyncedEpisodes.current.add(epNum);
+
+          // Sync to AniList in background
+          fetch("/api/anilist/progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mediaId: animeInfo.anilistId,
+              progress: epNum,
+              totalEpisodes: animeInfo.episodesCount || undefined,
+            }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                toast.success(`AniList: Odcinek ${epNum} oznaczony!`, {
+                  id: `anilist-sync-${epNum}`,
+                });
+              }
+            })
+            .catch((err) => {
+              console.error("[AniList Sync] Error:", err);
+              // Remove from synced set so it can retry
+              anilistSyncedEpisodes.current.delete(epNum);
+            });
+        }
+      }
     },
-    [skipTimes, activeSkip],
+    [skipTimes, activeSkip, duration, animeInfo, currentFile, episodes],
   );
 
   const isMp4 = currentFile?.toLowerCase().endsWith(".mp4");

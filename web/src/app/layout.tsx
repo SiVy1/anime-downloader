@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,7 +33,9 @@ export default function RootLayout({
         <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,_rgba(30,58,138,0.15)_0%,_transparent_70%)] pointer-events-none" />
         <div className="fixed inset-0 ambient-vignette z-[9999]" />
 
-        <main className="relative z-10">{children}</main>
+        <SessionProvider>
+          <main className="relative z-10">{children}</main>
+        </SessionProvider>
 
         <Toaster position="bottom-right" theme="dark" closeButton richColors />
       </body>

@@ -4,7 +4,16 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      anilistId?: number;
     } & DefaultSession["user"];
+    accessToken?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken?: string;
+    anilistId?: number;
   }
 }
 
@@ -62,17 +71,23 @@ export const authOptions: NextAuthOptions = {
     },
   ],
   callbacks: {
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+    async jwt({ token, account, profile }) {
+      // Save access token on first login
+      if (account?.access_token) {
+        token.accessToken = account.access_token;
       }
-      return session;
-    },
-    async jwt({ token, profile }) {
       if (profile) {
-        token.sub = String((profile as { id: number }).id);
+        token.anilistId = (profile as { id: number }).id;
       }
       return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub || "";
+        session.user.anilistId = token.anilistId;
+      }
+      session.accessToken = token.accessToken;
+      return session;
     },
   },
   session: {

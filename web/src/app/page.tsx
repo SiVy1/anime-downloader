@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import SeasonView from "@/components/SeasonView";
+import { UserMenu } from "@/components/ui/UserMenu";
 
 type Tab = "library" | "season";
 
@@ -209,11 +210,12 @@ export default function LibraryPage() {
             />
           </div>
 
-          <div className="hidden md:flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5">
+          <div className="hidden md:flex items-center gap-3">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5">
               <HardDrive className="w-3 h-3 text-blue-500" />
               <span>{libraryAnime.length} Śledzonych</span>
             </div>
+            <UserMenu />
           </div>
         </div>
 
