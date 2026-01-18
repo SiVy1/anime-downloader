@@ -19,15 +19,19 @@ export async function GET(
   }
 
   try {
-    // Service handles all data fetching and persistence (Write-Through cache)
-    const anime = await getAnimeById(anilistId);
+    // Service handles all data fetching. Pass persist: false to prevent auto-adding to library.
+    const anime = await getAnimeById(anilistId, false);
 
     if (!anime) {
       return NextResponse.json({ error: "Anime not found" }, { status: 404 });
     }
 
-    // Get episodes (service handles sync if needed)
-    const episodes = await getAnimeEpisodes(anilistId, anime._id.toString());
+    // Get episodes. Pass persist: false to prevent auto-adding to library.
+    const episodes = await getAnimeEpisodes(
+      anilistId,
+      anime._id?.toString(),
+      false,
+    );
 
     return NextResponse.json({ anime, episodes });
   } catch (error) {

@@ -1,3 +1,4 @@
+import mongoose, { Schema, Document } from "mongoose";
 import { getRedis, connectDB } from "./db";
 import { Anime, Episode, IAnime, IEpisode } from "@/models/Anime";
 import {
@@ -337,7 +338,10 @@ export async function searchAnime(query: string): Promise<AniListMedia | null> {
  * 4. Cache in Redis
  * 5. Return data
  */
-export async function getAnimeById(id: number): Promise<IAnime | null> {
+export async function getAnimeById(
+  id: number,
+  persist: boolean = true,
+): Promise<IAnime | null> {
   const redis = getRedis();
   const cacheKey = `anilist:anime:${id}`;
 
@@ -368,8 +372,20 @@ export async function getAnimeById(id: number): Promise<IAnime | null> {
 
     if (!data?.Media) return null;
 
-    // Step 4: Upsert to MongoDB (Write-Through)
+    // Step 4: Convert to doc format
     const animeDoc = anilistToAnimeDoc(data.Media);
+
+    if (!persist) {
+      // Return transient object without saving to DB
+      const transientAnime = {
+        ...animeDoc,
+        _id: new mongoose.Types.ObjectId(), // Virtual ID for frontend
+      } as unknown as IAnime;
+      await redis.set(cacheKey, JSON.stringify(transientAnime), "EX", 3600); // Shorter cache for transient
+      return transientAnime;
+    }
+
+    // Step 4: Upsert to MongoDB (Write-Through)
     const savedAnime = await Anime.findOneAndUpdate(
       { anilistId: id },
       { $set: animeDoc },
@@ -397,6 +413,7 @@ export async function getAnimeById(id: number): Promise<IAnime | null> {
 export async function getAnimeEpisodes(
   anilistId: number,
   animeId?: string,
+  persist: boolean = true,
 ): Promise<IEpisode[]> {
   const redis = getRedis();
   const cacheKey = `anilist:episodes:${anilistId}`;
@@ -473,6 +490,11 @@ export async function getAnimeEpisodes(
           isDownloaded: false,
           watched: false,
         });
+      }
+
+      if (!persist) {
+        // Return transient episodes without saving to DB
+        return episodeDocs as unknown as IEpisode[];
       }
 
       // Bulk upsert episodes
