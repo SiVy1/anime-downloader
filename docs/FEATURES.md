@@ -32,3 +32,13 @@
 - **Auto Conversion**: Background service that converts MKV to web-friendly MP4 to ensure native browser support and seekability.
 - **Metadata Enrichment**: Automatic fetching of synopses, scores, and cover art.
 - **Watch Status**: Track which episodes you've already seen.
+
+## 📡 PVR Auto-Download
+
+- **Series Subscriptions**: Subscribe to tracked anime - the system will automatically search for and download new episodes.
+- **Release Profiles**: Configure per-anime preferences for:
+  - Preferred release groups (SubsPlease, Erai-raws, etc.)
+  - Quality settings (720p, 1080p, 4K)
+  - Excluded groups
+- **Global Defaults**: Set default preferences that apply to all new subscriptions.
+- **Cron-Based Scheduling**: Trigger the PVR cycle via Linux cron for reliable automatic downloads.

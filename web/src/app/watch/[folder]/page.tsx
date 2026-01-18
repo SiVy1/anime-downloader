@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
@@ -10,6 +10,7 @@ import { PlaylistSidebar } from "@/components/player/PlaylistSidebar";
 import { PlayerInfo } from "@/components/player/PlayerInfo";
 import { SubtitleModal } from "@/components/player/SubtitleModal";
 import { TorrentModal } from "@/components/anime/TorrentModal";
+import ReleaseProfileModal from "@/components/anime/ReleaseProfileModal";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -17,6 +18,9 @@ import {
   Download,
   Subtitles,
   CheckCircle2,
+  Bell,
+  BellOff,
+  Settings,
 } from "lucide-react";
 
 export default function WatchPage() {
@@ -66,6 +70,39 @@ export default function WatchPage() {
   } = useVideoPlayer(folder as string);
 
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [togglingSubscription, setTogglingSubscription] = useState(false);
+
+  // Fetch subscription status when anime loads
+  useEffect(() => {
+    if (anime?.isSubscribed !== undefined) {
+      setIsSubscribed(anime.isSubscribed);
+    }
+  }, [anime]);
+
+  const toggleSubscription = async () => {
+    if (!animeInfo?.mal_id) return;
+    setTogglingSubscription(true);
+    try {
+      const res = await fetch(`/api/anime/${animeInfo.mal_id}/subscribe`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsSubscribed(data.isSubscribed);
+        toast.success(
+          data.isSubscribed
+            ? "Auto-pobieranie włączone"
+            : "Auto-pobieranie wyłączone",
+        );
+      }
+    } catch (error) {
+      toast.error("Nie udało się zmienić subskrypcji");
+    } finally {
+      setTogglingSubscription(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 overflow-hidden flex flex-col">
@@ -179,6 +216,42 @@ export default function WatchPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Subscription & Settings */}
+          {animeInfo?.mal_id && (
+            <>
+              <button
+                onClick={toggleSubscription}
+                disabled={togglingSubscription}
+                className={`flex items-center gap-2 px-4 py-3 rounded-2xl border transition-all group shadow-xl ${
+                  isSubscribed
+                    ? "bg-blue-600/10 border-blue-500/30 text-blue-400"
+                    : "bg-white/5 border-white/5 text-white/40 hover:bg-blue-600/10 hover:border-blue-500/30"
+                }`}
+                title={
+                  isSubscribed
+                    ? "Wyłącz auto-pobieranie"
+                    : "Włącz auto-pobieranie"
+                }
+              >
+                {isSubscribed ? (
+                  <Bell className="w-4 h-4" />
+                ) : (
+                  <BellOff className="w-4 h-4" />
+                )}
+                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">
+                  {isSubscribed ? "Subskrybujesz" : "Subskrybuj"}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group shadow-xl"
+                title="Ustawienia profilu wydania"
+              >
+                <Settings className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+              </button>
+            </>
+          )}
 
           <button
             onClick={searchSubtitles}
@@ -300,6 +373,15 @@ export default function WatchPage() {
           downloadingHash={downloadingHash}
           onDownload={startDownload}
           onClose={() => setSearchingEp(null)}
+        />
+      )}
+
+      {showProfileModal && animeInfo?.mal_id && (
+        <ReleaseProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          malId={animeInfo.mal_id}
+          animeTitle={anime?.title || animeInfo?.title || decodedFolder}
         />
       )}
 

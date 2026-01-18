@@ -1,5 +1,21 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+// Release Profile - preferences for auto-downloading
+export interface IReleaseProfile {
+  preferredGroups: string[]; // e.g., ["SubsPlease", "Erai-raws"]
+  preferredQuality: string; // e.g., "1080p", "720p", "4k"
+  excludeGroups: string[]; // Groups to avoid
+  autoDownload: boolean; // Master switch for auto-download
+}
+
+// Default release profile (used when anime has no custom profile)
+export const DEFAULT_RELEASE_PROFILE: IReleaseProfile = {
+  preferredGroups: ["SubsPlease", "Erai-raws"],
+  preferredQuality: "1080p",
+  excludeGroups: [],
+  autoDownload: true,
+};
+
 export interface IAnime extends Document {
   malId: number;
   title: string;
@@ -16,6 +32,10 @@ export interface IAnime extends Document {
   genres: string[];
   score: number;
   localFolderName?: string; // Links to the directory in ARIA2_PATH
+  // PVR fields
+  isSubscribed?: boolean; // Whether auto-download is enabled
+  releaseProfile?: IReleaseProfile; // Custom release preferences
+  lastEpisodeCheck?: Date; // Last time PVR checked for new episodes
   updatedAt: Date;
 }
 
@@ -35,6 +55,15 @@ const AnimeSchema: Schema = new Schema({
   genres: [String],
   score: Number,
   localFolderName: String,
+  // PVR fields
+  isSubscribed: { type: Boolean, default: false },
+  releaseProfile: {
+    preferredGroups: { type: [String], default: ["SubsPlease", "Erai-raws"] },
+    preferredQuality: { type: String, default: "1080p" },
+    excludeGroups: { type: [String], default: [] },
+    autoDownload: { type: Boolean, default: true },
+  },
+  lastEpisodeCheck: Date,
   updatedAt: { type: Date, default: Date.now },
 });
 
