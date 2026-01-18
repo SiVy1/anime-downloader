@@ -19,6 +19,8 @@ export const DEFAULT_RELEASE_PROFILE: IReleaseProfile = {
 export interface IAnime extends Document {
   anilistId: number;
   title: string;
+  titleRomaji?: string;
+  titleEnglish?: string;
   images: {
     webp: {
       image_url: string;
@@ -42,6 +44,8 @@ export interface IAnime extends Document {
 const AnimeSchema: Schema = new Schema({
   anilistId: { type: Number, required: true, unique: true },
   title: { type: String, required: true },
+  titleRomaji: String,
+  titleEnglish: String,
   images: {
     webp: {
       image_url: String,

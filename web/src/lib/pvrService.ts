@@ -154,7 +154,7 @@ export async function checkAnimeForNewEpisodes(
 ): Promise<PVRCheckResult> {
   const result: PVRCheckResult = {
     anilistId: anime.anilistId,
-    title: anime.title,
+    title: anime.titleRomaji || anime.title,
     episodesFound: 0,
     episodesDownloaded: 0,
     errors: [],
@@ -193,7 +193,11 @@ export async function checkAnimeForNewEpisodes(
 
   for (const episode of toCheck) {
     try {
-      const match = await searchEpisode(anime.title, episode.number, profile);
+      const match = await searchEpisode(
+        anime.titleRomaji || anime.title,
+        episode.number,
+        profile,
+      );
 
       if (match) {
         result.episodesFound++;

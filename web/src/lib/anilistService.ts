@@ -237,6 +237,8 @@ function anilistToAnimeDoc(media: AniListMedia): Partial<IAnime> {
   return {
     anilistId: media.id,
     title: media.title.english || media.title.romaji,
+    titleRomaji: media.title.romaji || undefined,
+    titleEnglish: media.title.english || undefined,
     images: {
       webp: {
         image_url: media.coverImage.large,

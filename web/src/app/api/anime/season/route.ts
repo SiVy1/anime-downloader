@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
     const anime = result.anime.map((a) => ({
       id: a.id,
       title: a.title.english || a.title.romaji,
-      title_english: a.title.english,
-      title_romaji: a.title.romaji,
-      title_native: a.title.native,
+      titleEnglish: a.title.english,
+      titleRomaji: a.title.romaji,
+      titleNative: a.title.native,
       images: {
         jpg: {
           image_url: a.coverImage.large,

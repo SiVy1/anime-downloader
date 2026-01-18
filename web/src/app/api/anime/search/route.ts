@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
       return {
         id: r.id,
         title: r.title.english || r.title.romaji,
-        title_english: r.title.english,
-        title_romaji: r.title.romaji,
+        titleEnglish: r.title.english,
+        titleRomaji: r.title.romaji,
         images: {
           jpg: {
             image_url: r.coverImage?.large,
