@@ -1,6 +1,6 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
-import { MediaPlayer, MediaProvider, Track, Gesture } from "@vidstack/react";
+import { MediaPlayer, MediaProvider, Track } from "@vidstack/react";
 import {
   DefaultVideoLayout,
   defaultLayoutIcons,
@@ -58,13 +58,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           className="w-full h-full"
         >
           <MediaProvider>
-            {/* Double-click gestures for seeking and fullscreen */}
-            <Gesture
-              className="vds-gesture"
-              event="dblpointerup"
-              action="toggle:fullscreen"
-            />
-
             {/* Custom Skip Intro/Outro */}
             <AnimatePresence>
               {activeSkip && (
@@ -76,7 +69,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   className="absolute bottom-32 right-8 z-50"
                 >
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (playerRef.current) {
                         playerRef.current.currentTime =
                           activeSkip.interval.endTime;
@@ -132,7 +126,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 default={idx === 0}
               />
             ))}
-            <DefaultVideoLayout icons={defaultLayoutIcons} />
+            <DefaultVideoLayout icons={defaultLayoutIcons} noGestures />
           </MediaProvider>
         </MediaPlayer>
       ) : (
