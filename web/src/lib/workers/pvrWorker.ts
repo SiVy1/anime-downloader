@@ -9,20 +9,37 @@ import { runPVRCycle } from "../pvrService";
  * This worker should be initialized only once.
  */
 
-const REDIS_CONNECTION = {
-  host: new URL(env.redis.url).hostname,
-  port: parseInt(new URL(env.redis.url).port),
-  password: new URL(env.redis.url).password || undefined,
-  username: new URL(env.redis.url).username || undefined,
+const redisUrl = env.redis.url;
+let connectionOpts: any = {
   maxRetriesPerRequest: null,
 };
+
+try {
+  const url = new URL(redisUrl);
+  connectionOpts = {
+    ...connectionOpts,
+    host: url.hostname,
+    port: parseInt(url.port) || 6379,
+    password: url.password || undefined,
+    username: url.username || undefined,
+  };
+} catch (e) {
+  connectionOpts = {
+    ...connectionOpts,
+    host: redisUrl.includes(":") ? redisUrl.split(":")[0] : redisUrl,
+    port: redisUrl.includes(":") ? parseInt(redisUrl.split(":")[1]) : 6379,
+  };
+}
 
 let worker: Worker | null = null;
 
 export function initPVRWorker() {
   if (worker) return worker;
 
-  console.log("[PVR Worker] Initializing...");
+  console.log("[PVR Worker] Initializing with connection:", {
+    host: connectionOpts.host,
+    port: connectionOpts.port,
+  });
 
   worker = new Worker(
     "pvr-queue",
@@ -37,7 +54,7 @@ export function initPVRWorker() {
       }
     },
     {
-      connection: REDIS_CONNECTION,
+      connection: connectionOpts,
       concurrency: 1, // Only one PVR cycle at a time
     },
   );
