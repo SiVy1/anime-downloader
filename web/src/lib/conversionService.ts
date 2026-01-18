@@ -101,14 +101,41 @@ export async function convertMkvToMp4(
     return { success: true, outputPath };
   }
 
-  // Check if conversion in progress
+  // Check if conversion in progress (Memory lock)
   if (activeConversions.has(inputPath)) {
-    console.log(`[CONVERT] Already in progress: ${relativePath}`);
+    console.log(`[CONVERT] Already in progress (mem): ${relativePath}`);
     return { success: false, error: "Conversion already in progress" };
   }
 
-  // Mark as active IMMEDIATELY to prevent race conditions
+  // Disk lock
+  const lockPath = inputPath + ".lock";
+  if (fs.existsSync(lockPath)) {
+    // Check if lock is stale (older than 2 hours)
+    const lockStats = fs.statSync(lockPath);
+    const ageMs = Date.now() - lockStats.mtimeMs;
+    if (ageMs < 2 * 60 * 60 * 1000) {
+      console.log(`[CONVERT] Already in progress (lock): ${relativePath}`);
+      return { success: false, error: "Conversion already locked by another process" };
+    } else {
+      console.log(`[CONVERT] Removing stale lock for: ${relativePath}`);
+      fs.unlinkSync(lockPath);
+    }
+  }
+
+  // Check if temp file exists and is active
+  if (fs.existsSync(tempPath)) {
+    const tempStats = fs.statSync(tempPath);
+    const ageMs = Date.now() - tempStats.mtimeMs;
+    // If temp file was touched in last 2 minutes, assume it's active
+    if (ageMs < 120000) {
+      console.log(`[CONVERT] Temp file is fresh, skipping to avoid conflict: ${relativePath}`);
+      return { success: false, error: "Temp file currently being written by another process" };
+    }
+  }
+
+  // Mark as active
   activeConversions.set(inputPath, { progress: 0, command: null });
+  fs.writeFileSync(lockPath, process.pid.toString());
 
   // Ensure output directory exists
   const outputDir = path.dirname(outputPath);
@@ -119,6 +146,7 @@ export async function convertMkvToMp4(
   } catch (err: any) {
     console.error(`[CONVERT DIR ERROR] ${err.message}`);
     activeConversions.delete(inputPath);
+    if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
     return { success: false, error: `Cannot create directory: ${outputDir}` };
   }
 
@@ -130,6 +158,7 @@ export async function convertMkvToMp4(
       `[CONVERT PERMISSION ERROR] Cannot read input file ${inputPath}: ${err.message}`,
     );
     activeConversions.delete(inputPath);
+    if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
     return {
       success: false,
       error: `No read permission for file: ${path.basename(inputPath)}`,
@@ -151,6 +180,7 @@ export async function convertMkvToMp4(
 
   if (!metadata) {
     activeConversions.delete(inputPath);
+    if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
     return { success: false, error: "Failed to probe file" };
   }
 
@@ -179,13 +209,10 @@ export async function convertMkvToMp4(
       .audioCodec(canCopyAudio ? "copy" : "aac")
       .outputOptions([
         `-threads ${threads}`,
-        "-preset ultrafast",
-        "-crf 23",
         "-movflags +faststart",
         "-map 0:v:0",
-        "-map 0:a:0?",
-        "-map 0:s?",
-        "-c:s mov_text",
+        "-map 0:a:0?", // Use first audio track
+        "-sn", // Skip subtitles in MP4 for better compatibility (use external VTT)
       ])
       .on("start", (commandLine) => {
         console.log(`[CONVERT] Command: ${commandLine}`);
@@ -195,6 +222,9 @@ export async function convertMkvToMp4(
       .on("progress", (progress) => {
         const percent = progress.percent || 0;
         activeConversions.set(inputPath, { progress: percent, command });
+        // Touch lock file to keep it fresh
+        try { if (fs.existsSync(lockPath)) fsp.utimes(lockPath, new Date(), new Date()); } catch {}
+        
         onProgress?.({
           percent,
           currentTime: progress.timemark
@@ -205,6 +235,7 @@ export async function convertMkvToMp4(
       .on("error", (err) => {
         console.error(`[CONVERT ERROR] ${relativePath}: ${err.message}`);
         activeConversions.delete(inputPath);
+        if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
         if (fs.existsSync(tempPath)) {
           fs.unlinkSync(tempPath);
         }
@@ -213,9 +244,17 @@ export async function convertMkvToMp4(
       .on("end", async () => {
         console.log(`[CONVERT] Completed: ${relativePath}`);
         activeConversions.delete(inputPath);
+        if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
+
         try {
           if (await exists(tempPath)) {
-            await fsp.rename(tempPath, outputPath);
+            // Check if output file was already created by another process
+            if (await exists(outputPath)) {
+              console.log(`[CONVERT] Output file already exists, deleting temp: ${tempPath}`);
+              await fsp.unlink(tempPath);
+            } else {
+              await fsp.rename(tempPath, outputPath);
+            }
           }
           if (await exists(inputPath)) {
             await fsp.unlink(inputPath);
@@ -230,6 +269,7 @@ export async function convertMkvToMp4(
     command.save(tempPath);
   });
 }
+
 
 
 /**
