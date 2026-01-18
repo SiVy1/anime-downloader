@@ -271,12 +271,12 @@ export function useVideoPlayer(folder: string) {
     setSearchingEp(episode);
     setIsSearchingTorrents(true);
     setTorrentResults([]);
-    const romaji = anime?.titleRomaji || animeInfo?.titleRomaji;
-    const title = anime?.title || animeInfo?.title || decodedFolder;
+    const romaji =
+      anime?.titleRomaji || animeInfo?.titleRomaji || decodedFolder;
 
     try {
       const res = await fetch(
-        `/api/downloader/search-episode?title=${encodeURIComponent(title)}&romaji=${encodeURIComponent(romaji || "")}&episode=${episode.number}`,
+        `/api/downloader/search-episode?romaji=${encodeURIComponent(romaji)}&episode=${episode.number}`,
       );
       const data = await res.json();
       setTorrentResults(data.results || []);
