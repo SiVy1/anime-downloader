@@ -103,7 +103,9 @@ export function useVideoPlayer(folder: string) {
       setActiveSub(null);
       setSubtitles([]);
 
-      fetch(`/api/subtitles/metadata/${encodeURIComponent(currentFile || "")}`)
+      fetch(
+        `/api/subtitles/metadata/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile || "")}`,
+      )
         .then((res) => res.json())
         .then((data) => {
           if (data.subtitles) {
