@@ -110,10 +110,18 @@ async function searchEpisode(
 ): Promise<{ magnet: string; title: string } | null> {
   // Build search query with episode number
   const paddedEp = episodeNumber.toString().padStart(2, "0");
+
+  // Use Romaji title if possible for better matching on Nyaa
   const query = `${animeTitle} ${paddedEp}`;
+  const quality = profile.preferredQuality || "1080p";
 
   try {
-    const results = await downloaderService.searchNyaa(query);
+    const results = await downloaderService.searchNyaa(
+      query,
+      "seeders",
+      "desc",
+      quality,
+    );
 
     if (results.length === 0) {
       return null;

@@ -68,17 +68,53 @@ class DownloaderService {
     query: string,
     sortBy: string = "seeders",
     order: string = "desc",
+    quality: string = "",
+    subCategory: string = "eng",
   ): Promise<NyaaSearchResult[]> {
     try {
+      // 1. Normalize query: remove unnecessary special characters that might confuse Nyaa
+      // but keep spaces and alphanumeric chars.
+      let normalizedQuery = query
+        .replace(/[:]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      // 2. Build search query: use explicit quality if provided
+      let searchQuery = normalizedQuery;
+
+      if (
+        quality &&
+        !searchQuery.toLowerCase().includes(quality.toLowerCase())
+      ) {
+        searchQuery = `${searchQuery} ${quality}`;
+      } else if (
+        !quality &&
+        !searchQuery.toLowerCase().includes("1080p") &&
+        !searchQuery.toLowerCase().includes("720p") &&
+        !searchQuery.toLowerCase().includes("2160p")
+      ) {
+        // Default to 1080p only if no quality indicated at all
+        searchQuery = `${searchQuery} 1080p`;
+      }
+
+      console.log(
+        `[Nyaa] Requesting: ${searchQuery} (Category: anime, Sub: ${subCategory || "all"})`,
+      );
+
+      const params: any = {
+        q: searchQuery,
+        category: "anime",
+        sort: sortBy,
+        order: order,
+      };
+
+      if (subCategory) {
+        params.sub_category = subCategory;
+      }
+
       const response = await axios.get(NYAA_API, {
-        params: {
-          q: `${query} 1080p`,
-          category: "anime",
-          sub_category: "eng",
-          sort: sortBy,
-          order: order,
-        },
-        timeout: 10000,
+        params,
+        timeout: 15000, // Increased timeout
       });
 
       const rawResults: NyaaRawEntry[] = response.data.data || [];

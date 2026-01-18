@@ -91,10 +91,11 @@ export function useAnimeDetails() {
   const startSearchTorrent = (episode: any) => {
     setSearchingEp(episode);
     setTorrentResults([]);
-    setIsSearchingTorrents(true);
+    const title = data.anime.title || "";
+    const romaji = data.anime.titleRomaji || "";
 
     fetch(
-      `/api/downloader/search-episode?title=${encodeURIComponent(data.anime.title)}&episode=${episode.number}`,
+      `/api/downloader/search-episode?title=${encodeURIComponent(title)}&romaji=${encodeURIComponent(romaji)}&episode=${episode.number}`,
     )
       .then((res) => res.json())
       .then((d) => {
