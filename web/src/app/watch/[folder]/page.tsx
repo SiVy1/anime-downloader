@@ -11,6 +11,8 @@ import { PlaylistSidebar } from "@/components/player/PlaylistSidebar";
 import { PlayerInfo } from "@/components/player/PlayerInfo";
 import { SubtitleModal } from "@/components/player/SubtitleModal";
 import { TorrentModal } from "@/components/anime/TorrentModal";
+import { toast } from "sonner";
+import { RefreshCw, Download, Subtitles, CheckCircle2 } from "lucide-react";
 
 export default function WatchPage() {
   const { folder } = useParams();
@@ -89,12 +91,98 @@ export default function WatchPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <AnimatePresence>
+            {(downloadingFiles.length > 0 || isConverting) && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="flex items-center gap-3 px-5 py-2.5 bg-blue-600/10 border border-blue-500/20 rounded-2xl mr-2 group/hub relative cursor-default"
+              >
+                <div className="relative">
+                  <RefreshCw
+                    className={`w-4 h-4 text-blue-500 ${isConverting || downloadingFiles.length > 0 ? "animate-spin" : ""}`}
+                  />
+                  <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-[#050505]">
+                    <span className="text-[7px] font-black text-white">
+                      {downloadingFiles.length + (isConverting ? 1 : 0)}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">
+                  {isConverting ? "Przetwarzanie..." : "Zadania w tle"}
+                </span>
+
+                {/* Popover Hub */}
+                <div className="absolute top-full right-0 mt-4 w-80 bg-[#0f0f0f] border border-white/10 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-6 opacity-0 translate-y-2 pointer-events-none group-hover/hub:opacity-100 group-hover/hub:translate-y-0 group-hover/hub:pointer-events-auto transition-all z-[100] backdrop-blur-3xl">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 mb-6 border-b border-white/5 pb-3">
+                    Centrum Aktywności
+                  </h4>
+                  <div className="space-y-5">
+                    {isConverting && (
+                      <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                          <span className="text-white/60 flex items-center gap-2">
+                            <RefreshCw className="w-3 h-3 text-blue-500 animate-spin" />{" "}
+                            Konwersja Wideo
+                          </span>
+                          <span className="text-blue-500">
+                            {Math.round(convertProgress)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${convertProgress}%` }}
+                            className="h-full bg-blue-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {downloadingFiles.length > 0 && (
+                      <div className="space-y-3">
+                        {downloadingFiles.map((file, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 group/file"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                              <Download className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-black uppercase tracking-tight text-white/80 truncate mb-1">
+                                {file.split("/").pop()}
+                              </p>
+                              <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest">
+                                Pobieranie...
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {downloadingFiles.length === 0 && !isConverting && (
+                      <div className="py-10 text-center space-y-3">
+                        <CheckCircle2 className="w-10 h-10 text-white/5 mx-auto" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/10">
+                          Wszystkie zadania ukończone
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <button
             onClick={searchSubtitles}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-blue-600/20 rounded-xl border border-white/5 transition-all text-sm font-medium"
+            className="flex items-center gap-3 px-6 py-3 bg-white/5 hover:bg-blue-600/10 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all group shadow-xl"
           >
-            <Subtitles className="w-4 h-4" />
-            Napisy Online
+            <Subtitles className="w-4 h-4 text-white/40 group-hover:text-blue-500 transition-colors" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white transition-colors">
+              Napisy Online
+            </span>
           </button>
         </div>
       </div>

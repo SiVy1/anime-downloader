@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 
 export function useVideoPlayer(folder: string) {
   const decodedFolder = decodeURIComponent(folder);
@@ -62,7 +63,9 @@ export function useVideoPlayer(folder: string) {
       }
       setLoading(false);
     } catch (err) {
-      console.error(err);
+      toast.error(
+        "Nie udało się pobrać danych biblioteki. Sprawdź połączenie z serwerem.",
+      );
       setLoading(false);
     }
   }, [folder, currentFile]);
@@ -115,7 +118,9 @@ export function useVideoPlayer(folder: string) {
           }
           if (data.codecs) setCodecInfo(data.codecs);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          toast.error("Błąd podczas pobierania metadanych pliku.");
+        });
     }
   }, [currentFile, folder]);
 
@@ -198,6 +203,7 @@ export function useVideoPlayer(folder: string) {
     if (subUrl) {
       setActiveSub(subUrl);
       setShowSubModal(false);
+      toast.success("Napisy zostały załadowane!");
     }
   };
 
@@ -215,7 +221,7 @@ export function useVideoPlayer(folder: string) {
         );
       }
     } catch (err) {
-      console.error(err);
+      toast.error("Wystąpił problem z synchronizacją stanu obejrzenia.");
     }
   };
 
@@ -246,7 +252,9 @@ export function useVideoPlayer(folder: string) {
         }, 2000);
       }
     } catch (err) {
-      console.error(err);
+      toast.error(
+        "Przetwarzanie nie mogło zostać rozpoczęte. Sprawdź miejsce na dysku.",
+      );
       setIsConverting(false);
     }
   };
@@ -277,10 +285,13 @@ export function useVideoPlayer(folder: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ magnet, subfolder: decodedFolder }),
       });
+      toast.success("Pobieranie rozpoczęte!");
       setSearchingEp(null);
       // We don't reload here as we'll wait for qBit to pick it up and refresh library normally
     } catch (err) {
-      console.error(err);
+      toast.error(
+        "Nie udało się dodać torrenta. Sprawdź czy qBittorrent jest uruchomiony.",
+      );
     } finally {
       setDownloadingHash(null);
     }
