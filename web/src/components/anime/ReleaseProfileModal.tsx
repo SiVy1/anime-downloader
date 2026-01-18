@@ -13,7 +13,7 @@ interface ReleaseProfile {
 interface ReleaseProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  malId: number;
+  anilistId: number;
   animeTitle: string;
   onSave?: (profile: ReleaseProfile) => void;
 }
@@ -34,7 +34,7 @@ const QUALITY_OPTIONS = ["720p", "1080p", "4K"];
 export default function ReleaseProfileModal({
   isOpen,
   onClose,
-  malId,
+  anilistId,
   animeTitle,
   onSave,
 }: ReleaseProfileModalProps) {
@@ -49,15 +49,15 @@ export default function ReleaseProfileModal({
   const [customExclude, setCustomExclude] = useState("");
 
   useEffect(() => {
-    if (isOpen && malId) {
+    if (isOpen && anilistId) {
       fetchProfile();
     }
-  }, [isOpen, malId]);
+  }, [isOpen, anilistId]);
 
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/anime/${malId}/release-profile`);
+      const res = await fetch(`/api/anime/${anilistId}/release-profile`);
       const data = await res.json();
       if (data.profile) {
         setProfile(data.profile);
@@ -72,7 +72,7 @@ export default function ReleaseProfileModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/anime/${malId}/release-profile`, {
+      const res = await fetch(`/api/anime/${anilistId}/release-profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profile),

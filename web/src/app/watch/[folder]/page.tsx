@@ -82,10 +82,10 @@ export default function WatchPage() {
   }, [anime]);
 
   const toggleSubscription = async () => {
-    if (!animeInfo?.mal_id) return;
+    if (!animeInfo?.anilistId) return;
     setTogglingSubscription(true);
     try {
-      const res = await fetch(`/api/anime/${animeInfo.mal_id}/subscribe`, {
+      const res = await fetch(`/api/anime/${animeInfo.anilistId}/subscribe`, {
         method: "POST",
       });
       const data = await res.json();
@@ -218,7 +218,7 @@ export default function WatchPage() {
           </AnimatePresence>
 
           {/* Subscription & Settings */}
-          {animeInfo?.mal_id && (
+          {animeInfo?.anilistId && (
             <>
               <button
                 onClick={toggleSubscription}
@@ -278,7 +278,7 @@ export default function WatchPage() {
             activeSkip={activeSkip}
             activeSub={activeSub}
             internalSubs={internalSubs}
-            malId={animeInfo?.mal_id}
+            anilistId={animeInfo?.anilistId}
             epNum={episodes
               .find((e) => e.localPath === currentFile)
               ?.number?.toString()}
@@ -376,11 +376,11 @@ export default function WatchPage() {
         />
       )}
 
-      {showProfileModal && animeInfo?.mal_id && (
+      {showProfileModal && animeInfo?.anilistId && (
         <ReleaseProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-          malId={animeInfo.mal_id}
+          anilistId={animeInfo.anilistId}
           animeTitle={anime?.title || animeInfo?.title || decodedFolder}
         />
       )}

@@ -49,7 +49,7 @@ export function useVideoPlayer(folder: string) {
       const data = await res.json();
       if (data.anime) {
         setAnime(data.anime);
-        if (data.anime.mal_id) setAnimeInfo(data.anime);
+        if (data.anime.anilistId) setAnimeInfo(data.anime);
       }
       if (data.episodes) {
         setEpisodes(data.episodes);
@@ -80,7 +80,7 @@ export function useVideoPlayer(folder: string) {
       if (searchData.results && searchData.results.length > 0) {
         const bestMatch = searchData.results[0];
         setAnimeInfo(bestMatch);
-        const detailRes = await fetch(`/api/anime/${bestMatch.mal_id}`);
+        const detailRes = await fetch(`/api/anime/${bestMatch.anilistId}`);
         const detailData = await detailRes.json();
         if (detailData.episodes) setEpisodesInfo(detailData.episodes);
       }
@@ -126,7 +126,7 @@ export function useVideoPlayer(folder: string) {
 
   // Skip Times
   useEffect(() => {
-    if (!animeInfo?.mal_id || !currentFile || duration === 0) return;
+    if (!animeInfo?.anilistId || !currentFile || duration === 0) return;
     const ep = episodes.find((e) => e.localPath === currentFile);
     const epNum = ep?.number;
     if (!epNum) return;
@@ -134,7 +134,7 @@ export function useVideoPlayer(folder: string) {
     const fetchSkipTimes = async () => {
       try {
         const res = await fetch(
-          `/api/anime/skip-times/${animeInfo.mal_id}/${epNum}?episodeLength=${Math.floor(duration)}`,
+          `/api/anime/skip-times/${animeInfo.anilistId}/${epNum}?episodeLength=${Math.floor(duration)}`,
           {
             headers: {
               "X-Client-ID": "ZGfO0sMF3eCwLYf8yMSCJjlynwNGRXWE",
@@ -149,7 +149,7 @@ export function useVideoPlayer(folder: string) {
       }
     };
     fetchSkipTimes();
-  }, [animeInfo?.mal_id, currentFile, episodes, duration]);
+  }, [animeInfo?.anilistId, currentFile, episodes, duration]);
 
   const handleDurationChange = (duration: number) => {
     setDuration(duration);

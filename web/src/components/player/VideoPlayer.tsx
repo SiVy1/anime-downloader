@@ -16,7 +16,7 @@ interface VideoPlayerProps {
   activeSkip: any;
   activeSub: string | null;
   internalSubs: any[];
-  malId?: number;
+  anilistId?: number;
   epNum?: string;
   folder: string;
   onTimeUpdate: (detail: { currentTime: number }) => void;
@@ -33,7 +33,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   activeSkip,
   activeSub,
   internalSubs,
-  malId,
+  anilistId,
   epNum,
   folder,
   onTimeUpdate,
@@ -99,10 +99,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </AnimatePresence>
 
             {/* Chapters & Subs */}
-            {malId && epNum && (
+            {anilistId && epNum && (
               <Track
-                key={`chapters-${malId}-${epNum}`}
-                src={`/api/anime/skip-times/${malId}/${epNum}/chapters.vtt?episodeLength=${Math.floor(playerRef.current?.state?.duration || 0)}`}
+                key={`chapters-${anilistId}-${epNum}`}
+                src={`/api/anime/skip-times/${anilistId}/${epNum}/chapters.vtt?episodeLength=${Math.floor(playerRef.current?.state?.duration || 0)}`}
                 kind="chapters"
                 default
               />

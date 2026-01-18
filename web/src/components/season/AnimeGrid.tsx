@@ -20,12 +20,12 @@ export const AnimeGrid: React.FC<AnimeGridProps> = ({
       <AnimatePresence mode="popLayout">
         {anime.map((item, index) => {
           const isTracked =
-            Array.isArray(trackedIds) && trackedIds.includes(item.mal_id);
+            Array.isArray(trackedIds) && trackedIds.includes(item.id);
 
           return (
             <motion.div
               layout
-              key={item.mal_id}
+              key={item.id}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -37,7 +37,7 @@ export const AnimeGrid: React.FC<AnimeGridProps> = ({
               className="group relative flex flex-col"
             >
               <Link
-                href={`/anime/${item.mal_id}`}
+                href={`/anime/${item.id}`}
                 className="block relative aspect-[2/3] rounded-[2rem] overflow-hidden glass-panel group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
               >
                 {/* Image Component */}

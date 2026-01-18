@@ -25,7 +25,7 @@ function DbAnimeCard({ anime }: { anime: any }) {
   const hasFolder = !!anime.localFolderName;
   const href = hasFolder
     ? `/watch/${encodeURIComponent(anime.localFolderName)}`
-    : `/anime/${anime.malId}`;
+    : `/anime/${anime.anilistId}`;
 
   return (
     <Link href={href} className="group relative flex flex-col h-full">
@@ -99,8 +99,8 @@ export default function LibraryPage() {
     null,
   );
 
-  // Tracked anime MAL IDs for SeasonView
-  const trackedIds = new Set(libraryAnime.map((a) => a.malId));
+  // Tracked anime AniList IDs for SeasonView
+  const trackedIds = new Set(libraryAnime.map((a) => a.anilistId));
 
   const fetchLibrary = () => {
     fetch("/api/library")
@@ -147,10 +147,10 @@ export default function LibraryPage() {
   }, [searchQuery]);
 
   const addToLibrary = async (anime: any) => {
-    const malId = anime.mal_id || anime.malId;
-    setIsAddingToLibrary(malId);
+    const anilistId = anime.id || anime.anilistId;
+    setIsAddingToLibrary(anilistId);
     try {
-      const res = await fetch(`/api/anime/${malId}/add`, {
+      const res = await fetch(`/api/anime/${anilistId}/add`, {
         method: "POST",
       });
       const data = await res.json();
@@ -289,15 +289,15 @@ export default function LibraryPage() {
                   {onlineResults.length > 0 && (
                     <div className="space-y-8">
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
-                        W sieci (Jikan API)
+                        W sieci (AniList)
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 lg:gap-8">
                         {onlineResults.map((anime) => {
-                          const isTracked = trackedIds.has(anime.mal_id);
-                          const isAdding = isAddingToLibrary === anime.mal_id;
+                          const isTracked = trackedIds.has(anime.id);
+                          const isAdding = isAddingToLibrary === anime.id;
                           return (
                             <div
-                              key={anime.mal_id}
+                              key={anime.id}
                               className="group relative flex flex-col"
                             >
                               <div className="aspect-[3/4] relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 group-hover:border-blue-500/50 transition-all duration-300 shadow-lg">
@@ -326,7 +326,7 @@ export default function LibraryPage() {
                                 )}
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60 backdrop-blur-sm">
                                   <Link
-                                    href={`/anime/${anime.mal_id}`}
+                                    href={`/anime/${anime.id}`}
                                     className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
                                   >
                                     Szczegóły

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 export interface SeasonAnime {
-  mal_id: number;
+  id: number;
   title: string;
   title_english?: string;
   images: any;
