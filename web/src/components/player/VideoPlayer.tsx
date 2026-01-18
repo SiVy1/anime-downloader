@@ -1,33 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
+import { ChevronRight } from "lucide-react";
+import { MediaPlayer, MediaProvider, Track, Gesture } from "@vidstack/react";
 import {
-  ChevronRight,
-  Play,
-  Pause,
-  RotateCcw,
-  RotateCw,
-  Volume2,
-  Settings,
-  Maximize,
-  ListVideo,
-  Subtitles,
-  Clock,
-} from "lucide-react";
-import {
-  MediaPlayer,
-  MediaProvider,
-  Track,
-  Controls,
-  TimeSlider,
-  VolumeSlider,
-  PlayButton,
-  SeekButton,
-  MuteButton,
-  FullscreenButton,
-  Menu,
-  useMediaState,
-  Time,
-  Gesture,
-} from "@vidstack/react";
+  DefaultVideoLayout,
+  defaultLayoutIcons,
+} from "@vidstack/react/player/layouts/default";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface VideoPlayerProps {
@@ -63,8 +40,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onDurationChange,
   onToggleSidebar,
 }) => {
-  const [controlsVisible, setControlsVisible] = useState(false);
-
   return (
     <div className="relative aspect-video rounded-3xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] border border-white/5 bg-black mx-auto group/player">
       {currentFile ? (
@@ -79,7 +54,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           minLiveDVRWindow={streamType.includes("live") ? 1 : undefined}
           onTimeUpdate={onTimeUpdate}
           onDurationChange={onDurationChange}
-          onControlsChange={(visible) => setControlsVisible(visible)}
           className="w-full h-full"
         >
           <MediaProvider>
@@ -87,18 +61,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <Gesture event="dblpointerup" action="toggle:fullscreen" />
             <Gesture event="dblpointerup" action="seek:-10" />
             <Gesture event="dblpointerup" action="seek:10" />
-
-            {/* Cinematic Vignette */}
-            <AnimatePresence>
-              {controlsVisible && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"
-                />
-              )}
-            </AnimatePresence>
 
             {/* Custom Skip Intro/Outro */}
             <AnimatePresence>
@@ -167,131 +129,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 default={idx === 0}
               />
             ))}
+            <DefaultVideoLayout icons={defaultLayoutIcons} />
           </MediaProvider>
-
-          {/* Custom TV-inspired OSD */}
-          <div
-            className={`media-controls absolute inset-0 z-20 flex flex-col justify-end p-8 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-          >
-            {/* Top Bar: Title & Playlist Toggle */}
-            <div className="absolute top-0 left-0 right-0 p-8 flex items-center justify-between pointer-events-auto">
-              <motion.div
-                initial={{ y: -20, opacity: 0 }}
-                animate={controlsVisible ? { y: 0, opacity: 1 } : {}}
-                className="flex items-center gap-4"
-              >
-                <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
-                  <Play className="w-5 h-5 fill-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black uppercase italic tracking-tight text-white/90 leading-none">
-                    {currentFile
-                      ?.split("/")
-                      .pop()
-                      ?.replace(/\.(mkv|mp4|avi|mov)$/i, "")}
-                  </h2>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 mt-1">
-                    Streaming w jakości HD
-                  </p>
-                </div>
-              </motion.div>
-
-              <button
-                onClick={onToggleSidebar}
-                className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all group"
-              >
-                <ListVideo className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
-
-            {/* Bottom Bar: Timeline & Controls */}
-            <div className="flex flex-col gap-6 pointer-events-auto">
-              <TimeSlider.Root className="vds-time-slider vds-slider group/slider relative mx-[7.5px] flex h-7 items-center cursor-pointer touch-none select-none outline-none">
-                <TimeSlider.Track className="relative h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                  <TimeSlider.TrackFill className="vds-slider-fill absolute h-full w-[var(--slider-fill)] bg-blue-500 rounded-full" />
-                  <TimeSlider.Progress className="vds-slider-progress absolute h-full w-[var(--slider-progress)] bg-white/5 rounded-full" />
-                </TimeSlider.Track>
-                <TimeSlider.Thumb className="vds-slider-thumb absolute left-[var(--slider-fill)] top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover/slider:opacity-100 transition-opacity shadow-lg z-20" />
-              </TimeSlider.Root>
-
-              <Controls.Group className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <PlayButton className="w-12 h-12 rounded-2xl bg-white text-black hover:bg-blue-500 hover:text-white flex items-center justify-center transition-colors shadow-xl">
-                    <Play className="w-6 h-6 fill-current vds-play-icon" />
-                    <Pause className="w-6 h-6 fill-current vds-pause-icon" />
-                  </PlayButton>
-                  <SeekButton
-                    seconds={-10}
-                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white/70 hover:text-white"
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                  </SeekButton>
-                  <SeekButton
-                    seconds={10}
-                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white/70 hover:text-white"
-                  >
-                    <RotateCw className="w-5 h-5" />
-                  </SeekButton>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs font-black tracking-widest text-white/60 tabular-nums">
-                  <Time type="current" />
-                  <span className="opacity-20">/</span>
-                  <Time type="duration" />
-                </div>
-
-                <div className="flex-1" />
-
-                <div className="flex items-center gap-4 px-4 py-2 bg-white/5 rounded-2xl border border-white/5 group/vol">
-                  <MuteButton className="text-white hover:text-blue-500 transition-colors">
-                    <Volume2 className="w-5 h-5" />
-                  </MuteButton>
-                  <div className="w-0 group-hover/vol:w-24 overflow-hidden transition-all duration-300">
-                    <VolumeSlider.Root className="vds-volume-slider vds-slider relative flex h-7 w-24 items-center cursor-pointer touch-none select-none outline-none">
-                      <VolumeSlider.Track className="vds-slider-track relative h-1 w-full rounded-full bg-white/10 overflow-hidden">
-                        <VolumeSlider.TrackFill className="vds-slider-fill absolute h-full w-[var(--slider-fill)] bg-blue-500 rounded-full" />
-                      </VolumeSlider.Track>
-                      <VolumeSlider.Thumb className="vds-slider-thumb absolute left-[var(--slider-fill)] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg z-20" />
-                    </VolumeSlider.Root>
-                  </div>
-                </div>
-
-                <Menu.Root className="relative">
-                  <Menu.Button className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white/70 hover:text-white">
-                    <Settings className="w-5 h-5 vds-rotate-icon" />
-                  </Menu.Button>
-                  <Menu.Content
-                    className="vds-menu-content z-[100] min-w-[220px] bg-[#0f0f0f] border border-white/10 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-3xl animate-in fade-in zoom-in duration-200"
-                    placement="top end"
-                  >
-                    <Menu.RadioGroup className="flex flex-col gap-1">
-                      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white/20">
-                        Opcje Odtwarzania
-                      </div>
-                      <Menu.Item className="vds-menu-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
-                        <Subtitles className="w-4 h-4 text-white/40 group-hover:text-blue-500" />
-                        <span className="text-xs font-bold text-white/80">
-                          Napisy
-                        </span>
-                        <ChevronRight className="w-3 h-3 ml-auto text-white/20" />
-                      </Menu.Item>
-                      <Menu.Item className="vds-menu-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
-                        <Clock className="w-4 h-4 text-white/40 group-hover:text-blue-500" />
-                        <span className="text-xs font-bold text-white/80">
-                          Prędkość
-                        </span>
-                        <ChevronRight className="w-3 h-3 ml-auto text-white/20" />
-                      </Menu.Item>
-                    </Menu.RadioGroup>
-                  </Menu.Content>
-                </Menu.Root>
-
-                <FullscreenButton className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-white/70 hover:text-white">
-                  <Maximize className="w-5 h-5" />
-                </FullscreenButton>
-              </Controls.Group>
-            </div>
-          </div>
         </MediaPlayer>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-white/5 to-transparent">
