@@ -109,7 +109,6 @@ export default function WatchPage() {
               ?.number?.toString()}
             folder={decodedFolder}
             onTimeUpdate={handleTimeUpdate}
-            onDurationChange={handleDurationChange}
           />
 
           <PlayerInfo
