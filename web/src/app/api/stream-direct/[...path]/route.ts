@@ -3,6 +3,7 @@ import fs from "fs";
 import { promises as fsp } from "fs";
 import path from "path";
 import { ARIA2_PATH } from "@/lib/downloader";
+import { sanitizeFolderName } from "@/lib/utils/filesystem";
 
 /**
  * Direct Stream API - Serves video files directly without transcoding
@@ -24,16 +25,28 @@ export async function GET(
 
   const folder = decodeURIComponent(pathParts[0]);
   const filename = decodeURIComponent(pathParts.slice(1).join("/"));
-  const fullPath = path.join(ARIA2_PATH, folder, filename);
+  const sanitizedFolder = sanitizeFolderName(folder);
+
+  let fullPath = path.join(ARIA2_PATH, sanitizedFolder, filename);
 
   console.log("[StreamDirect] Decoded folder:", folder);
+  console.log("[StreamDirect] Sanitized folder:", sanitizedFolder);
   console.log("[StreamDirect] Decoded filename:", filename);
-  console.log("[StreamDirect] Constructed ARIA2_PATH:", ARIA2_PATH);
   console.log("[StreamDirect] Attempting to serve:", fullPath);
 
   if (!fs.existsSync(fullPath)) {
-    console.error("[StreamDirect] File not found at path:", fullPath);
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
+    // Fallback to unsanitized folder name
+    const unsanitizedPath = path.join(ARIA2_PATH, folder, filename);
+    console.log(
+      "[StreamDirect] Sanitized path not found, trying unsanitized:",
+      unsanitizedPath,
+    );
+    if (fs.existsSync(unsanitizedPath)) {
+      fullPath = unsanitizedPath;
+    } else {
+      console.error("[StreamDirect] File not found at any path");
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
+    }
   }
 
   const stat = fs.statSync(fullPath);
