@@ -58,9 +58,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           className="w-full h-full"
         >
           <MediaProvider>
-            <Gesture event="dblpointerup" action="toggle:fullscreen" />
-            <Gesture event="dblpointerup" action="seek:-10" />
-            <Gesture event="dblpointerup" action="seek:10" />
+            {/* Double-click gestures for seeking and fullscreen */}
+            <Gesture
+              className="vds-gesture"
+              event="dblpointerup"
+              action="toggle:fullscreen"
+            />
 
             {/* Custom Skip Intro/Outro */}
             <AnimatePresence>
