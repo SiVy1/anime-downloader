@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { Anime, Episode } from "@/models/Anime";
+import { getSetting } from "@/models/Settings";
+
 import { ARIA2_PATH } from "@/lib/downloader";
 import fs from "fs/promises";
 import path from "path";
@@ -70,7 +72,11 @@ export async function GET(req: NextRequest) {
     const latestAnime = await Anime.find({})
       .sort({ updatedAt: -1 })
       .limit(5)
-      .select("title images anilistId updatedAt");
+      .select("title images anilistId updatedAt localFolderName");
+
+    // 5. Settings
+    const discord_webhook_url = await getSetting("discord_webhook_url", "");
+
 
     return NextResponse.json({
       library: {
@@ -82,7 +88,11 @@ export async function GET(req: NextRequest) {
       disk: diskStats,
       activity: recentActivity,
       latestAnime,
+      settings: {
+        discord_webhook_url,
+      },
     });
+
   } catch (error) {
     console.error("[StatsAPI] Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

@@ -8,6 +8,8 @@ import {
   IReleaseProfile,
 } from "./releaseProfileService";
 import { extractEpisodeNumber } from "./animeParser";
+import { notifyDownloadStarted } from "./notificationService";
+
 
 /**
  * PVR Service - Personal Video Recorder functionality
@@ -223,7 +225,11 @@ export async function checkAnimeForNewEpisodes(
         if (hashes && hashes.length > 0) {
           result.episodesDownloaded++;
           console.log(`[PVR] Downloaded: ${match.title}`);
+          
+          // Notify Discord
+          await notifyDownloadStarted(anime.title, episode.number);
         } else {
+
           result.errors.push(
             `Failed to add torrent for episode ${episode.number}`,
           );

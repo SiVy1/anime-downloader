@@ -105,8 +105,9 @@ export async function linkFolderToAnime(
 
       bulkOps.push({
         updateOne: {
-          filter: { animeId: anime._id, number: epNum },
+          filter: { animeId: anime._id, number: epNum, isDownloaded: { $ne: true } },
           update: {
+
             $set: {
               localPath: storagePath,
               isDownloaded: true,

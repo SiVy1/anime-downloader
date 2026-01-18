@@ -240,7 +240,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {data.latestAnime.map((anime: any, i: number) => (
+            {data.latestAnime?.map((anime: any, i: number) => (
               <motion.div
                 key={anime.anilistId}
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -267,7 +267,77 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+
+        {/* Settings Section */}
+
+        <div className="space-y-8">
+          <h2 className="text-sm font-black italic uppercase tracking-[0.3em] flex items-center gap-4 text-orange-550">
+            <div className="w-8 h-px bg-orange-600" />
+            Konfiguracja Systemu
+          </h2>
+
+          <div className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-4">
+              <h3 className="text-lg font-black italic uppercase tracking-tighter">Powiadomienia Discord</h3>
+              <p className="text-xs text-white/40 leading-relaxed font-medium">
+                Wklej tutaj adres Discord Webhook, aby otrzymywać powiadomienia o nowych odcinkach 
+                oraz postępach w pobieraniu bezpośrednio na swój serwer.
+              </p>
+              
+              <div className="space-y-3 pt-4">
+                <input
+                  type="text"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all text-xs font-medium"
+                  id="discord-url"
+                  defaultValue={data.settings?.discord_webhook_url || ""}
+                />
+                <button
+                  onClick={async () => {
+                    const url = (document.getElementById("discord-url") as HTMLInputElement).value;
+                    const res = await fetch("/api/settings", {
+                      method: "POST",
+                      body: JSON.stringify({ key: "discord_webhook_url", value: url }),
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    if (res.ok) {
+                      alert("Ustawienia zapisane!");
+                    }
+                  }}
+                  className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:border-blue-500/50"
+                >
+                  Zapisz Zmiany
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-blue-600/5 border border-blue-500/10 rounded-[2rem] p-8 space-y-4">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 opacity-60">Szybka Pomoc</h3>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0 text-blue-400 font-black text-xs">1</div>
+                  <p className="text-[11px] text-white/60 leading-relaxed">
+                    Stwórz webhooka w ustawieniach kanału na Discordzie i wklej link obok.
+                  </p>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0 text-blue-400 font-black text-xs">2</div>
+                  <p className="text-[11px] text-white/60 leading-relaxed">
+                    Skonfiguruj qBittorrent, aby wysyłał sygnał do backendu po zakończeniu pobierania.
+                  </p>
+                </div>
+                <Link 
+                  href="https://github.com" 
+                  className="inline-block text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors pt-2"
+                >
+                  Pełna Dokumentacja &rarr;
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
+
 
       {/* Footer Ambient */}
       <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-blue-600/5 to-transparent pointer-events-none" />
