@@ -263,7 +263,7 @@ export default function WatchPage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 320, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="hidden lg:block lg:col-span-1 border-l border-white/5 bg-[#080808]"
+              className="hidden lg:block w-[420px] border-l border-white/5 bg-[#080808] shrink-0"
             >
               <PlaylistSidebar
                 episodes={episodes}

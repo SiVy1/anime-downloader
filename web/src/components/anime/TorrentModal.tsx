@@ -123,7 +123,7 @@ export const TorrentModal: React.FC<TorrentModalProps> = ({
 
                 return (
                   <motion.div
-                    key={t.id}
+                    key={t.id || t.hash || t.title}
                     variants={item}
                     className={`group p-6 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-blue-500/30 rounded-3xl transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden ${isDownloading ? "ring-2 ring-blue-500/50 bg-blue-500/5" : ""}`}
                   >

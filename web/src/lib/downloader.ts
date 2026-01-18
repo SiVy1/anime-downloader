@@ -105,8 +105,13 @@ class DownloaderService {
           title.includes("avc") ||
           title.includes("h 264");
 
+        const magnet = item.magnet || "";
+        const hash = this.getHashFromMagnet(magnet) || `temp-${Math.random()}`;
+
         return {
           ...item,
+          id: hash,
+          hash: hash,
           extension,
           isHevc,
           isAvc,
