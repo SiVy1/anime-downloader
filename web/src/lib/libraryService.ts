@@ -59,21 +59,25 @@ export async function linkFolderToAnime(
     };
   }
 
-  // 2. Verify folder exists (Asynchronous)
+  // 2. Check if folder exists physically (for scanning)
   const localDirPath = path.join(ARIA2_PATH, folderName);
-  if (!(await exists(localDirPath))) {
+  const folderExists = await exists(localDirPath);
+
+  // 3. Update anime with folder link (always do this if anime exists)
+  anime.localFolderName = folderName;
+  await anime.save();
+
+  if (!folderExists) {
+    console.log(
+      `[LibraryService] Linked folder name "${folderName}" to anime ${anilistId}, but physical folder does not exist yet (expected for new downloads).`,
+    );
     return {
-      success: false,
+      success: true,
       linkedFolder: folderName,
       filesScanned: 0,
       episodesMapped: 0,
-      error: "Local folder does not exist",
     };
   }
-
-  // 3. Update anime with folder link
-  anime.localFolderName = folderName;
-  await anime.save();
 
   // 4. Scan folder for video files (Asynchronous)
   const videoFiles = await getVideoFiles(localDirPath);
