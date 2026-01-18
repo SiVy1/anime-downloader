@@ -5,6 +5,7 @@ import { promises as fsp } from "fs";
 import os from "os";
 import { ARIA2_PATH } from "./downloader";
 import { FFprobeMetadata, FFprobeStream } from "./types/ffprobe";
+import { sanitizeFolderName } from "./utils/filesystem";
 
 export interface ConversionProgress {
   percent: number;
@@ -29,10 +30,26 @@ export function getMp4Path(mkvPath: string): string {
 }
 
 /**
+ * Sanitize relative path - sanitizes only the folder part, not the filename
+ */
+function sanitizeRelativePath(relativePath: string): string {
+  const parts = relativePath.split("/");
+  if (parts.length > 1) {
+    // Sanitize folder name (first part)
+    parts[0] = sanitizeFolderName(parts[0]);
+  }
+  return parts.join("/");
+}
+
+/**
  * Check if a converted MP4 version exists
  */
 export async function hasConvertedVersion(mkvPath: string): Promise<boolean> {
-  const mp4Path = getMp4Path(mkvPath);
+  const sanitizedPath = sanitizeRelativePath(mkvPath);
+  const fullPath = ARIA2_PATH
+    ? path.join(ARIA2_PATH, sanitizedPath)
+    : sanitizedPath;
+  const mp4Path = getMp4Path(fullPath);
   try {
     await fsp.access(mp4Path);
     return true;
@@ -45,7 +62,11 @@ export async function hasConvertedVersion(mkvPath: string): Promise<boolean> {
  * Get conversion progress for a file
  */
 export function getConversionProgress(filePath: string): number | null {
-  const conversion = activeConversions.get(filePath);
+  const sanitizedPath = sanitizeRelativePath(filePath);
+  const fullPath = ARIA2_PATH
+    ? path.join(ARIA2_PATH, sanitizedPath)
+    : sanitizedPath;
+  const conversion = activeConversions.get(fullPath);
   return conversion ? conversion.progress : null;
 }
 
@@ -61,9 +82,14 @@ export async function convertMkvToMp4(
     return { success: false, error: "ARIA2_PATH not configured" };
   }
 
-  const inputPath = path.join(ARIA2_PATH, relativePath);
+  // Sanitize the folder part of the path
+  const sanitizedPath = sanitizeRelativePath(relativePath);
+  const inputPath = path.join(ARIA2_PATH, sanitizedPath);
   const outputPath = getMp4Path(inputPath);
   const tempPath = outputPath + ".temp";
+
+  console.log(`[CONVERT] Sanitized path: ${sanitizedPath}`);
+  console.log(`[CONVERT] Input path: ${inputPath}`);
 
   if (!fs.existsSync(inputPath)) {
     return { success: false, error: "Input file not found" };
