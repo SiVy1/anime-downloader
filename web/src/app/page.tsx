@@ -15,13 +15,15 @@ import {
   Plus,
   Loader2,
   List,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 import SeasonView from "@/components/SeasonView";
 import { UserMenu } from "@/components/ui/UserMenu";
 import { AniListView } from "@/components/home/AniListView";
 
-type Tab = "library" | "season" | "mylist";
+type Tab = "library" | "season" | "mylist" | "insights";
+
 
 // Card for database anime (has full metadata)
 function DbAnimeCard({ anime }: { anime: any }) {
@@ -175,7 +177,9 @@ export default function LibraryPage() {
     { id: "library" as Tab, label: "Biblioteka", icon: Library },
     { id: "mylist" as Tab, label: "Moja Lista", icon: List },
     { id: "season" as Tab, label: "Odkrywaj", icon: Compass },
+    { id: "insights" as any, label: "Statystyki", icon: Activity },
   ];
+
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
@@ -225,22 +229,36 @@ export default function LibraryPage() {
         {/* Tabs - Consolidated 2-way Toggle */}
         <div className="max-w-7xl mx-auto px-6 pb-2">
           <div className="flex gap-1 p-1 bg-white/5 backdrop-blur-md rounded-xl w-fit border border-white/5">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 ${
-                  activeTab === tab.id
-                    ? "bg-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.3)]"
-                    : "text-white/30 hover:text-white/60 hover:bg-white/5"
-                }`}
-              >
-                <tab.icon
-                  className={`w-3.5 h-3.5 transition-transform duration-500 ${activeTab === tab.id ? "scale-110" : ""}`}
-                />
-                {tab.label}
-              </button>
-            ))}
+            {tabs.map((tab) => {
+              const isInsights = tab.id === "insights";
+              const content = (
+                <button
+                  key={tab.id}
+                  onClick={() => !isInsights && setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 ${
+                    activeTab === tab.id
+                      ? "bg-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.3)]"
+                      : "text-white/30 hover:text-white/60 hover:bg-white/5"
+                  }`}
+                >
+                  <tab.icon
+                    className={`w-3.5 h-3.5 transition-transform duration-500 ${activeTab === tab.id ? "scale-110" : ""}`}
+                  />
+                  {tab.label}
+                </button>
+              );
+
+              if (isInsights) {
+                return (
+                  <Link key={tab.id} href="/dashboard">
+                    {content}
+                  </Link>
+                );
+              }
+
+              return content;
+            })}
+
           </div>
         </div>
       </div>

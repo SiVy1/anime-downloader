@@ -89,7 +89,7 @@ export async function linkFolderToAnime(
   const bulkOps: Array<{
     updateOne: {
       filter: { animeId: typeof anime._id; number: number };
-      update: { $set: { localPath: string; isDownloaded: boolean } };
+      update: { $set: { localPath: string; isDownloaded: boolean; downloadedAt?: Date } };
     };
   }> = [];
 
@@ -110,6 +110,7 @@ export async function linkFolderToAnime(
             $set: {
               localPath: storagePath,
               isDownloaded: true,
+              downloadedAt: new Date(),
             },
           },
         },
@@ -122,7 +123,11 @@ export async function linkFolderToAnime(
   if (bulkOps.length > 0) {
     const result = await Episode.bulkWrite(bulkOps, { ordered: false });
     episodesMapped = result.modifiedCount;
+
+    // Update anime updatedAt to reflect library changes
+    await Anime.updateOne({ _id: anime._id }, { $set: { updatedAt: new Date() } });
   }
+
 
   console.log(
     `[LibraryService] Linked folder "${folderName}" to anime ${anilistId}: ${videoFiles.length} files scanned, ${episodesMapped} episodes mapped`,

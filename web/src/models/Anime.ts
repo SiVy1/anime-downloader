@@ -84,6 +84,7 @@ export interface IEpisode extends Document {
   isDownloaded: boolean;
   watched: boolean;
   duration?: number;
+  downloadedAt?: Date;
 }
 
 const EpisodeSchema: Schema = new Schema({
@@ -96,7 +97,9 @@ const EpisodeSchema: Schema = new Schema({
   isDownloaded: { type: Boolean, default: false },
   watched: { type: Boolean, default: false },
   duration: Number,
+  downloadedAt: Date,
 });
+
 
 // Compound index to ensure episode numbers are unique per anime
 EpisodeSchema.index({ animeId: 1, number: 1 }, { unique: true });
