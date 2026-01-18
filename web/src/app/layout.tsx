@@ -26,9 +26,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#050505] text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#050505] text-[#ededed] min-h-screen relative selection:bg-blue-500/30 font-sans tracking-tight`}
       >
-        {children}
+        {/* Ambient Depth Layer */}
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,_rgba(30,58,138,0.15)_0%,_transparent_70%)] pointer-events-none" />
+        <div className="fixed inset-0 ambient-vignette z-[9999]" />
+
+        <main className="relative z-10">{children}</main>
+
         <Toaster position="bottom-right" theme="dark" closeButton richColors />
       </body>
     </html>

@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowLeft, Subtitles } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +11,13 @@ import { PlayerInfo } from "@/components/player/PlayerInfo";
 import { SubtitleModal } from "@/components/player/SubtitleModal";
 import { TorrentModal } from "@/components/anime/TorrentModal";
 import { toast } from "sonner";
-import { RefreshCw, Download, Subtitles, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Download,
+  Subtitles,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function WatchPage() {
   const { folder } = useParams();

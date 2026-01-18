@@ -1,162 +1,139 @@
 import React from "react";
-import { Star, Plus, Check, Calendar, Tv } from "lucide-react";
-import Link from "next/link";
+import { Star, Play, CheckCircle2, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { SeasonAnime } from "@/hooks/useSeasonAnime";
 
 interface AnimeGridProps {
   anime: SeasonAnime[];
-  trackedIds: Set<number>;
-  onTrack: (anime: SeasonAnime) => void;
+  trackedIds: number[];
+  onTrack?: (anime: SeasonAnime) => void;
 }
-
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
 
 export const AnimeGrid: React.FC<AnimeGridProps> = ({
   anime,
-  trackedIds,
+  trackedIds = [],
   onTrack,
 }) => {
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"
-    >
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 sm:gap-8">
       <AnimatePresence mode="popLayout">
-        {anime.map((a) => {
-          const isTracked = trackedIds.has(a.mal_id);
-          const imageUrl =
-            a.images?.webp?.large_image_url || a.images?.jpg?.large_image_url;
+        {anime.map((item, index) => {
+          const isTracked = trackedIds.includes(item.mal_id);
 
           return (
             <motion.div
               layout
-              key={a.mal_id}
-              variants={item}
-              initial="hidden"
-              animate="show"
-              exit={{ opacity: 0, scale: 0.9 }}
+              key={item.mal_id}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{
+                duration: 0.4,
+                delay: Math.min(index * 0.05, 0.4),
+                layout: { duration: 0.4, type: "spring", bounce: 0.2 },
+              }}
               className="group relative flex flex-col"
             >
-              {/* Card */}
-              <div className="aspect-[3/4] relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 group-hover:border-blue-500/50 transition-all duration-300 shadow-lg">
-                {imageUrl ? (
-                  <motion.img
-                    src={imageUrl}
-                    alt={a.title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/5">
-                    <Tv className="w-12 h-12 text-white/10" />
+              <Link
+                href={`/anime/${item.mal_id}`}
+                className="block relative aspect-[2/3] rounded-[2rem] overflow-hidden glass-panel group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
+              >
+                {/* Image Component */}
+                <img
+                  src={
+                    item.images?.jpg?.large_image_url ||
+                    item.images?.jpg?.image_url
+                  }
+                  alt={item.title}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  loading="lazy"
+                />
+
+                {/* Glass Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                {/* Hover Actions */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                  <div className="glass-button w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl">
+                    <Play className="w-8 h-8 fill-current ml-1" />
                   </div>
-                )}
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 text-glow-blue">
+                    Zobacz Detale
+                  </span>
+                </div>
 
                 {/* Score Badge */}
-                {a.score && (
-                  <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg z-10">
-                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                    <span className="text-[10px] font-black text-white">
-                      {a.score.toFixed(1)}
-                    </span>
-                  </div>
-                )}
+                <div className="absolute top-4 left-4 glass-panel px-3 py-1.5 rounded-xl flex items-center gap-1.5 border-white/10 shadow-lg">
+                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                  <span className="text-[10px] font-black italic text-white/90">
+                    {item.score || "N/A"}
+                  </span>
+                </div>
 
                 {/* Tracked Badge */}
-                <AnimatePresence>
-                  {isTracked && (
-                    <motion.div
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center z-10 shadow-lg"
-                    >
-                      <Check className="w-3 h-3 text-white" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60 backdrop-blur-[2px] z-20">
-                  <Link
-                    href={`/anime/${a.mal_id}`}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
-                  >
-                    Szczegóły
-                  </Link>
-                  {!isTracked && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onTrack(a);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg active:scale-95"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Śledź
-                    </button>
-                  )}
-                </div>
-
-                {/* Info Bar */}
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black via-black/80 to-transparent z-10">
-                  {a.broadcast && (
-                    <div className="flex items-center gap-1 mb-1">
-                      <Calendar className="w-2.5 h-2.5 text-blue-400" />
-                      <span className="text-[8px] text-blue-400 font-bold uppercase tracking-wider">
-                        {a.broadcast}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/70 font-medium">
-                      {a.episodes ? `${a.episodes} odc.` : "W emisji"}
-                    </span>
-                    {a.studios[0] && (
-                      <span className="text-[9px] text-white/40 italic">
-                        {a.studios[0]}
-                      </span>
-                    )}
+                {isTracked && (
+                  <div className="absolute top-4 right-4 w-10 h-10 glass-panel rounded-xl flex items-center justify-center border-blue-500/30 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                    <Heart className="w-5 h-5 fill-current" />
                   </div>
+                )}
+              </Link>
+
+              {/* Info Area */}
+              <div className="mt-5 px-1">
+                <div className="flex justify-between items-start gap-3 mb-1.5">
+                  <h3 className="text-sm font-black italic uppercase tracking-tight text-white/90 group-hover:text-blue-400 transition-colors line-clamp-1 flex-1">
+                    {item.title_english || item.title}
+                  </h3>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
+                    {item.type || "TV"}
+                  </span>
+                  <span className="w-1 h-1 bg-white/10 rounded-full" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
+                    {item.airing ? "W emisji" : "Zakończono"}
+                  </span>
+                  {item.studios?.[0] && (
+                    <>
+                      <span className="w-1 h-1 bg-white/10 rounded-full" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/20 truncate max-w-[80px]">
+                        {item.studios[0]}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* Title & Genres */}
-              <div className="mt-3 px-1">
-                <Link
-                  href={`/anime/${a.mal_id}`}
-                  className="block group-hover:text-blue-400 transition-colors"
-                >
-                  <p className="text-sm font-bold leading-snug line-clamp-2 text-white/90">
-                    {a.title_english || a.title}
-                  </p>
-                </Link>
-                {a.genres.length > 0 && (
-                  <p className="text-[10px] text-white/30 mt-1 font-medium line-clamp-1">
-                    {a.genres.slice(0, 3).join(" • ")}
-                  </p>
+              {/* Quick Track Action in Footer - visible on hover */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  onTrack?.(item);
+                }}
+                className={`mt-4 h-12 rounded-2xl glass-button flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all ${isTracked ? "text-blue-400 bg-blue-500/10 border-blue-500/20" : "text-white/40"}`}
+              >
+                {isTracked ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">
+                      Oglądasz
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-4 h-4" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">
+                      Śledź serię
+                    </span>
+                  </>
                 )}
-              </div>
+              </button>
             </motion.div>
           );
         })}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 };
