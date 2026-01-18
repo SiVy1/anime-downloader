@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { PlaylistSidebar } from "@/components/player/PlaylistSidebar";
 import { PlayerInfo } from "@/components/player/PlayerInfo";
 import { SubtitleModal } from "@/components/player/SubtitleModal";
+import { AudioTrackSelector } from "@/components/player/AudioTrackSelector";
 import { TorrentModal } from "@/components/anime/TorrentModal";
 import ReleaseProfileModal from "@/components/anime/ReleaseProfileModal";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ import {
   Bell,
   BellOff,
   Settings,
+  Volume2,
 } from "lucide-react";
 
 export default function WatchPage() {
@@ -44,6 +46,9 @@ export default function WatchPage() {
     isSearchingSubs,
     showSubModal,
     setShowSubModal,
+    audioTracks,
+    activeAudioTrack,
+    setActiveAudioTrack,
     isConverting,
     convertProgress,
     isConverted,
@@ -71,8 +76,21 @@ export default function WatchPage() {
 
   const [showSidebar, setShowSidebar] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAudioDropdown, setShowAudioDropdown] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [togglingSubscription, setTogglingSubscription] = useState(false);
+  const audioDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close audio dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (audioDropdownRef.current && !audioDropdownRef.current.contains(event.target as Node)) {
+        setShowAudioDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Fetch subscription status when anime loads
   useEffect(() => {
@@ -251,6 +269,45 @@ export default function WatchPage() {
                 <Settings className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
               </button>
             </>
+          )}
+
+          {/* Audio Track Selector */}
+          {audioTracks.length > 1 && (
+            <div className="relative" ref={audioDropdownRef}>
+              <button
+                onClick={() => setShowAudioDropdown(!showAudioDropdown)}
+                className={`flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all group shadow-xl ${
+                  showAudioDropdown
+                    ? "bg-blue-600/10 border-blue-500/30"
+                    : "bg-white/5 hover:bg-blue-600/10 border-white/5 hover:border-blue-500/30"
+                }`}
+              >
+                <Volume2 className={`w-4 h-4 transition-colors ${showAudioDropdown ? "text-blue-500" : "text-white/40 group-hover:text-blue-500"}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white transition-colors">
+                  Audio ({audioTracks[activeAudioTrack]?.language?.toUpperCase() || "?"})
+                </span>
+              </button>
+              <AnimatePresence>
+                {showAudioDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-72 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-4 z-50"
+                  >
+                    <AudioTrackSelector
+                      audioTracks={audioTracks}
+                      activeTrack={activeAudioTrack}
+                      onSelect={(idx) => {
+                        setActiveAudioTrack(idx);
+                        setShowAudioDropdown(false);
+                        toast.success(`Zmieniono ścieżkę audio na: ${audioTracks[idx]?.title || `Audio ${idx + 1}`}`);
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
 
           <button

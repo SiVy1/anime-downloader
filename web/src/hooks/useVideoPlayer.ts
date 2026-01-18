@@ -23,6 +23,11 @@ export function useVideoPlayer(folder: string) {
   const [isSearchingSubs, setIsSearchingSubs] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
 
+  // Audio tracks state
+  const [audioTracks, setAudioTracks] = useState<any[]>([]);
+  const [activeAudioTrack, setActiveAudioTrack] = useState<number>(0);
+
+
   // Conversion state
   const [isConverting, setIsConverting] = useState(false);
   const [convertProgress, setConvertProgress] = useState(0);
@@ -109,6 +114,8 @@ export function useVideoPlayer(folder: string) {
     if (currentFile && currentFile !== lastFileRef.current) {
       lastFileRef.current = currentFile;
       setInternalSubs([]);
+      setAudioTracks([]);
+      setActiveAudioTrack(0);
       setCodecInfo(null);
       setActiveSub(null);
       setSubtitles([]);
@@ -122,6 +129,14 @@ export function useVideoPlayer(folder: string) {
             setInternalSubs(data.subtitles);
             setSubsLoadId((prev) => prev + 1);
           }
+          if (data.audioTracks) {
+            setAudioTracks(data.audioTracks);
+            // Set default track if available
+            const defaultTrack = data.audioTracks.find((t: any) => t.default);
+            if (defaultTrack) {
+              setActiveAudioTrack(defaultTrack.localIndex);
+            }
+          }
           if (data.codecs) setCodecInfo(data.codecs);
         })
         .catch((err) => {
@@ -129,6 +144,7 @@ export function useVideoPlayer(folder: string) {
         });
     }
   }, [currentFile, decodedFolder]);
+
 
   // Skip Times
   useEffect(() => {
@@ -370,6 +386,9 @@ export function useVideoPlayer(folder: string) {
     isSearchingSubs,
     showSubModal,
     setShowSubModal,
+    audioTracks,
+    activeAudioTrack,
+    setActiveAudioTrack,
     isConverting,
     convertProgress,
     isConverted,
@@ -395,4 +414,5 @@ export function useVideoPlayer(folder: string) {
     searchTorrentsForEpisode,
     startDownload,
   };
+
 }

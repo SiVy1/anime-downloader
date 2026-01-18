@@ -66,6 +66,20 @@ export async function GET(
           isASS: s.codec_name === "ass" || s.codec_name === "ssa",
         }));
 
+      // Extract all audio tracks for audio switching
+      const audioTracks = metadata.streams
+        .filter((s) => s.codec_type === "audio")
+        .map((s, index) => ({
+          index: s.index,
+          localIndex: index,
+          codec: s.codec_name,
+          language: s.tags?.language || "unknown",
+          title: s.tags?.title || `Audio ${index + 1}`,
+          channels: s.channels,
+          sampleRate: s.sample_rate,
+          default: s.disposition?.default === 1,
+        }));
+
       // Get video/audio codec info for smart streaming
       const videoStream = metadata.streams.find(
         (s) => s.codec_type === "video",
@@ -94,6 +108,7 @@ export async function GET(
           format: metadata.format.format_name,
           duration: metadata.format.duration,
           subtitles: subtitleTracks,
+          audioTracks: audioTracks,
           // New codec info for smart streaming
           codecs: {
             video: videoCodec,
@@ -106,6 +121,7 @@ export async function GET(
           },
         }),
       );
+
     });
   });
 }
