@@ -88,6 +88,8 @@ export async function GET(
   }
 
   // Fallback: Transcoding for MKV or unsupported formats
+  const audioTrackIndex = req.nextUrl.searchParams.get("audioTrack") || "0";
+
   const passThrough = new PassThrough();
   const command = ffmpeg(actualPath)
     .format("mp4")
@@ -98,9 +100,10 @@ export async function GET(
       "-tune zerolatency",
       "-movflags frag_keyframe+empty_moov+default_base_moof",
       "-map 0:v:0",
-      "-map 0:a:0?",
+      `-map 0:a:${audioTrackIndex}?`,
       "-threads 0",
     ])
+
     .on("error", (err) => {
       console.error(`[TRANSCODE ERROR] ${err.message}`);
       passThrough.destroy();

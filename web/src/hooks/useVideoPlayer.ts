@@ -233,13 +233,15 @@ export function useVideoPlayer(folder: string) {
   );
 
   const isMp4 = currentFile?.toLowerCase().endsWith(".mp4");
-  const canDirectPlay = codecInfo ? codecInfo.canDirectPlay : isMp4;
+  const canDirectPlay = codecInfo ? (codecInfo.canDirectPlay && activeAudioTrack === 0) : isMp4;
   const streamType = canDirectPlay ? "direct" : "transcode";
+
   const streamUrl = currentFile
     ? canDirectPlay
-      ? `/api/stream-direct/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile)}`
-      : `/api/stream/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile)}`
+      ? `/api/stream-direct/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile)}?audioTrack=${activeAudioTrack}`
+      : `/api/stream/${encodeURIComponent(decodedFolder)}/${encodeURIComponent(currentFile)}?audioTrack=${activeAudioTrack}`
     : "";
+
 
   const searchSubtitles = async () => {
     if (!currentFile) return;
