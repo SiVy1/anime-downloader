@@ -19,11 +19,7 @@ export async function GET(req: NextRequest) {
 
     console.log(`[Episode Search] Searching: ${query}`);
 
-    const results = await downloaderService.searchNyaa(
-      query,
-      "seeders",
-      "desc",
-    );
+    const results = await downloaderService.searchAll(query, "seeders", "desc");
 
     return NextResponse.json({ results: results || [] });
   } catch (err: any) {

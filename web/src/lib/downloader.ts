@@ -142,6 +142,141 @@ class DownloaderService {
   }
 
   /**
+   * Search AnimeTosho for anime torrents
+   */
+  public async searchAnimeTosho(query: string): Promise<NyaaSearchResult[]> {
+    const ANIMETOSHO_API = "https://feed.animetosho.org/json";
+
+    try {
+      console.log(`[AnimeTosho] Searching: ${query}`);
+
+      const response = await axios.get(ANIMETOSHO_API, {
+        params: {
+          q: query,
+          only_tor: 1,
+        },
+        timeout: 15000,
+      });
+
+      const rawResults: any[] = response.data || [];
+
+      const results: NyaaSearchResult[] = rawResults.map((item) => {
+        const title = item.title?.toLowerCase() || "";
+        const hash = item.info_hash || `temp-${Math.random()}`;
+
+        const extMatch =
+          title.match(/\.(mkv|mp4|avi|mov)\b/i) ||
+          title.match(/\[(mkv|mp4|avi|mov)\]/i);
+        const extension = extMatch ? extMatch[1].toLowerCase() : "unknown";
+
+        const isHevc =
+          title.includes("hevc") ||
+          title.includes("h265") ||
+          title.includes("h.265") ||
+          title.includes("x265");
+        const isAvc =
+          title.includes("h264") ||
+          title.includes("h.264") ||
+          title.includes("x264") ||
+          title.includes("avc");
+
+        // Convert total_size to human-readable format
+        const sizeBytes = item.total_size || 0;
+        const sizeMiB = sizeBytes / (1024 * 1024);
+        const sizeGiB = sizeMiB / 1024;
+        const sizeStr =
+          sizeGiB >= 1
+            ? `${sizeGiB.toFixed(2)} GiB`
+            : `${sizeMiB.toFixed(0)} MiB`;
+
+        return {
+          title: item.title || "",
+          link: item.link || "",
+          seeders: item.seeders || 0,
+          leechers: item.leechers || 0,
+          size: sizeStr,
+          date: item.timestamp
+            ? new Date(item.timestamp * 1000).toISOString()
+            : "",
+          magnet: item.magnet_uri || "",
+          torrent: item.torrent_url || "",
+          id: hash,
+          hash: hash,
+          extension,
+          isHevc,
+          isAvc,
+        };
+      });
+
+      // Sort: SubsPlease and Erai-raws to top
+      return results.sort((a, b) => {
+        const priorityGroups = ["subsplease", "erai-raws"];
+        const aTitle = a.title.toLowerCase();
+        const bTitle = b.title.toLowerCase();
+
+        const aHasPriority = priorityGroups.some((group) =>
+          aTitle.includes(`[${group}]`),
+        );
+        const bHasPriority = priorityGroups.some((group) =>
+          bTitle.includes(`[${group}]`),
+        );
+
+        if (aHasPriority && !bHasPriority) return -1;
+        if (!aHasPriority && bHasPriority) return 1;
+        return 0;
+      });
+    } catch (error) {
+      console.error("[AnimeTosho] Search error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Search both Nyaa and AnimeTosho, combine results
+   */
+  public async searchAll(
+    query: string,
+    sortBy: string = "seeders",
+    order: string = "desc",
+  ): Promise<NyaaSearchResult[]> {
+    const [nyaaResults, toshoResults] = await Promise.all([
+      this.searchNyaa(query, sortBy, order),
+      this.searchAnimeTosho(query),
+    ]);
+
+    // Combine and deduplicate by hash
+    const seen = new Set<string>();
+    const combined: NyaaSearchResult[] = [];
+
+    for (const result of [...nyaaResults, ...toshoResults]) {
+      if (!seen.has(result.hash)) {
+        seen.add(result.hash);
+        combined.push(result);
+      }
+    }
+
+    // Sort combined results: priority groups first, then by seeders
+    return combined.sort((a, b) => {
+      const priorityGroups = ["subsplease", "erai-raws"];
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+
+      const aHasPriority = priorityGroups.some((group) =>
+        aTitle.includes(`[${group}]`),
+      );
+      const bHasPriority = priorityGroups.some((group) =>
+        bTitle.includes(`[${group}]`),
+      );
+
+      if (aHasPriority && !bHasPriority) return -1;
+      if (!aHasPriority && bHasPriority) return 1;
+
+      // Secondary sort by seeders
+      return b.seeders - a.seeders;
+    });
+  }
+
+  /**
    * Add torrent by magnet link
    */
   public async addTorrent(
