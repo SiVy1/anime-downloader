@@ -8,7 +8,7 @@ import { SeasonFilters } from "./season/SeasonFilters";
 import { AnimeGrid } from "./season/AnimeGrid";
 
 interface SeasonViewProps {
-  trackedIds: Set<number>;
+  trackedIds: number[];
   onTrack: (anime: SeasonAnime) => void;
 }
 

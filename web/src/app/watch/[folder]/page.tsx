@@ -234,6 +234,26 @@ export default function WatchPage() {
             isConverted={isConverted}
             onStartConversion={startConversion}
           />
+
+          {/* Mobile Playlist Section */}
+          <div className="mt-20 lg:hidden border-t border-white/5 pt-12 pb-24">
+            <h3 className="text-sm font-black italic uppercase tracking-[0.3em] text-white/30 mb-8 flex items-center gap-3">
+              <div className="w-8 h-px bg-white/20" />
+              Playlist / {episodes.length} Odcinków
+            </h3>
+            <PlaylistSidebar
+              episodes={episodes}
+              currentFile={currentFile}
+              onSelect={(file) => {
+                setCurrentFile(file);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onDownload={searchTorrentsForEpisode}
+              downloadingFiles={downloadingFiles}
+              loading={loading}
+              isMobile={true}
+            />
+          </div>
         </div>
 
         <AnimatePresence>

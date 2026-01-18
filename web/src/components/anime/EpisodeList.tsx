@@ -42,10 +42,9 @@ export const EpisodeList: React.FC<EpisodeListProps> = ({
   return (
     <main className="max-w-7xl mx-auto px-6 py-20">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="flex items-center justify-between mb-12"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12"
       >
         <div>
           <h2 className="text-3xl font-black italic uppercase tracking-tighter flex items-center gap-4">
@@ -72,8 +71,7 @@ export const EpisodeList: React.FC<EpisodeListProps> = ({
       <motion.div
         variants={container}
         initial="hidden"
-        whileInView="show"
-        viewport={{ once: true }}
+        animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
       >
         {episodes.map((ep: any) => (

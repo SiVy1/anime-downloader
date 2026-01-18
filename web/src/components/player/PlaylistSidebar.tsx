@@ -11,10 +11,11 @@ import {
 interface PlaylistSidebarProps {
   episodes: any[];
   currentFile: string | null;
-  onSelect: (file: string, isDownloading: boolean) => void;
+  onSelect: (file: string) => void;
   onDownload: (episode: any) => void;
   downloadingFiles: string[];
-  loading: boolean;
+  loading?: boolean;
+  isMobile?: boolean;
 }
 
 export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
@@ -24,20 +25,27 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
   onDownload,
   downloadingFiles,
   loading,
+  isMobile,
 }) => {
   return (
-    <div className="bg-[#080808] border-l border-white/5 flex flex-col h-full shadow-[-32px_0_64px_-32px_rgba(0,0,0,0.5)] z-40">
-      <div className="p-6 border-b border-white/5 bg-[#0a0a0a]/50">
-        <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-          Playlist
-          <span className="ml-auto bg-white/10 px-2 py-0.5 rounded text-[10px] text-white/60">
-            {episodes.length}
-          </span>
-        </h3>
-      </div>
+    <div
+      className={`${isMobile ? "bg-transparent border-none shadow-none" : "bg-[#080808] border-l border-white/5 h-full shadow-[-32px_0_64px_-32px_rgba(0,0,0,0.5)]"} flex flex-col z-40`}
+    >
+      {!isMobile && (
+        <div className="p-6 border-b border-white/5 bg-[#0a0a0a]/50">
+          <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            Playlist
+            <span className="ml-auto bg-white/10 px-2 py-0.5 rounded text-[10px] text-white/60">
+              {episodes.length}
+            </span>
+          </h3>
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 custom-scrollbar">
+      <div
+        className={`${isMobile ? "p-0" : "flex-1 overflow-y-auto p-4 custom-scrollbar"} flex flex-col gap-2`}
+      >
         {loading ? (
           [...Array(8)].map((_, i) => (
             <div
@@ -57,7 +65,7 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
                 key={ep._id}
                 role="listitem"
                 onClick={() => {
-                  if (ep.isDownloaded) onSelect(ep.localPath, isDownloading);
+                  if (ep.isDownloaded) onSelect(ep.localPath);
                 }}
                 className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all text-left relative overflow-hidden ${
                   isActive

@@ -9,6 +9,8 @@ import {
   Settings,
   Maximize,
   ListVideo,
+  Subtitles,
+  Clock,
 } from "lucide-react";
 import {
   MediaPlayer,
@@ -21,7 +23,8 @@ import {
   SeekButton,
   MuteButton,
   FullscreenButton,
-  CaptionButton,
+  Menu,
+  useMediaState,
   Time,
   Gesture,
 } from "@vidstack/react";
@@ -213,53 +216,77 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
               <Controls.Group className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <PlayButton className="w-12 h-12 rounded-2xl bg-white text-black hover:bg-blue-500 hover:text-white flex items-center justify-center transition-colors group/play">
+                  <PlayButton className="w-12 h-12 rounded-2xl bg-white text-black hover:bg-blue-500 hover:text-white flex items-center justify-center transition-colors shadow-xl">
                     <Play className="w-6 h-6 fill-current vds-play-icon" />
                     <Pause className="w-6 h-6 fill-current vds-pause-icon" />
                   </PlayButton>
                   <SeekButton
                     seconds={-10}
-                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white"
+                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white/70 hover:text-white"
                   >
                     <RotateCcw className="w-5 h-5" />
                   </SeekButton>
                   <SeekButton
                     seconds={10}
-                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white"
+                    className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white/70 hover:text-white"
                   >
                     <RotateCw className="w-5 h-5" />
                   </SeekButton>
                 </div>
 
-                <Time
-                  className="text-xs font-black tracking-widest text-white/60"
-                  type="current"
-                />
-                <div className="w-px h-4 bg-white/10" />
-                <Time
-                  className="text-xs font-black tracking-widest text-white/60"
-                  type="duration"
-                />
+                <div className="flex items-center gap-2 text-xs font-black tracking-widest text-white/60 tabular-nums">
+                  <Time type="current" />
+                  <span className="opacity-20">/</span>
+                  <Time type="duration" />
+                </div>
 
                 <div className="flex-1" />
 
-                <div className="flex items-center gap-4 px-4 py-2 bg-white/5 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-4 px-4 py-2 bg-white/5 rounded-2xl border border-white/5 group/vol">
                   <MuteButton className="text-white hover:text-blue-500 transition-colors">
                     <Volume2 className="w-5 h-5" />
                   </MuteButton>
-                  <VolumeSlider.Root className="vds-volume-slider vds-slider relative flex h-7 w-24 items-center cursor-pointer touch-none select-none outline-none">
-                    <VolumeSlider.Track className="relative h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                      <VolumeSlider.TrackFill className="vds-slider-fill absolute h-full w-[var(--slider-fill)] bg-blue-500 rounded-full" />
-                    </VolumeSlider.Track>
-                    <VolumeSlider.Thumb className="vds-slider-thumb absolute left-[var(--slider-fill)] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg z-20" />
-                  </VolumeSlider.Root>
+                  <div className="w-0 group-hover/vol:w-24 overflow-hidden transition-all duration-300">
+                    <VolumeSlider.Root className="vds-volume-slider vds-slider relative flex h-7 w-24 items-center cursor-pointer touch-none select-none outline-none">
+                      <VolumeSlider.Track className="vds-slider-track relative h-1 w-full rounded-full bg-white/10 overflow-hidden">
+                        <VolumeSlider.TrackFill className="vds-slider-fill absolute h-full w-[var(--slider-fill)] bg-blue-500 rounded-full" />
+                      </VolumeSlider.Track>
+                      <VolumeSlider.Thumb className="vds-slider-thumb absolute left-[var(--slider-fill)] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg z-20" />
+                    </VolumeSlider.Root>
+                  </div>
                 </div>
 
-                <CaptionButton className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white">
-                  <Settings className="w-5 h-5" />
-                </CaptionButton>
+                <Menu.Root className="relative">
+                  <Menu.Button className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-colors text-white/70 hover:text-white">
+                    <Settings className="w-5 h-5 vds-rotate-icon" />
+                  </Menu.Button>
+                  <Menu.Content
+                    className="vds-menu-content z-[100] min-w-[220px] bg-[#0f0f0f] border border-white/10 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-3xl animate-in fade-in zoom-in duration-200"
+                    placement="top end"
+                  >
+                    <Menu.RadioGroup className="flex flex-col gap-1">
+                      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white/20">
+                        Opcje Odtwarzania
+                      </div>
+                      <Menu.Item className="vds-menu-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
+                        <Subtitles className="w-4 h-4 text-white/40 group-hover:text-blue-500" />
+                        <span className="text-xs font-bold text-white/80">
+                          Napisy
+                        </span>
+                        <ChevronRight className="w-3 h-3 ml-auto text-white/20" />
+                      </Menu.Item>
+                      <Menu.Item className="vds-menu-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
+                        <Clock className="w-4 h-4 text-white/40 group-hover:text-blue-500" />
+                        <span className="text-xs font-bold text-white/80">
+                          Prędkość
+                        </span>
+                        <ChevronRight className="w-3 h-3 ml-auto text-white/20" />
+                      </Menu.Item>
+                    </Menu.RadioGroup>
+                  </Menu.Content>
+                </Menu.Root>
 
-                <FullscreenButton className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-white">
+                <FullscreenButton className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-white/70 hover:text-white">
                   <Maximize className="w-5 h-5" />
                 </FullscreenButton>
               </Controls.Group>
