@@ -350,7 +350,11 @@ export async function getAnimeById(
     const cached = await redis.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed._id || parsed.anilistId) {
+      // Ensure we have the new titleRomaji field, otherwise bypass cache to refresh
+      if (
+        (parsed._id || parsed.anilistId) &&
+        (parsed.titleRomaji || persist === false)
+      ) {
         return parsed as IAnime;
       }
     }
@@ -359,9 +363,15 @@ export async function getAnimeById(
     await connectDB();
     const dbAnime = await Anime.findOne({ anilistId: id });
     if (dbAnime) {
-      // Cache the DB result in Redis for future fast access
-      await redis.set(cacheKey, JSON.stringify(dbAnime), "EX", 86400);
-      return dbAnime;
+      // If the record exists but lacks titleRomaji, we should fall through and refresh it from AniList
+      if (dbAnime.titleRomaji) {
+        // Cache the DB result in Redis for future fast access
+        await redis.set(cacheKey, JSON.stringify(dbAnime), "EX", 86400);
+        return dbAnime;
+      }
+      console.log(
+        `[AniListService] Anime ID ${id} found in DB but lacks titleRomaji. Refreshing...`,
+      );
     }
 
     // Step 3: Fetch from AniList GraphQL API (external source)

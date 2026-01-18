@@ -1,4 +1,5 @@
 import { connectDB } from "./db";
+import { getAnimeById } from "./anilistService";
 import { Anime, Episode, IAnime, IEpisode } from "@/models/Anime";
 import { downloaderService } from "./downloader";
 import {
@@ -249,18 +250,20 @@ export async function runPVRCycle(): Promise<PVRCheckResult[]> {
 
   const results: PVRCheckResult[] = [];
 
-  for (const anime of subscribedAnime) {
+  for (const animeDoc of subscribedAnime) {
     try {
+      // Refresh metadata if needed (e.g. missing titleRomaji) before checking
+      const anime = (await getAnimeById(animeDoc.anilistId, true)) || animeDoc;
       const result = await checkAnimeForNewEpisodes(anime);
       results.push(result);
 
       // Delay between anime checks
       await new Promise((resolve) => setTimeout(resolve, 5000));
     } catch (error: any) {
-      console.error(`[PVR] Error checking ${anime.title}:`, error);
+      console.error(`[PVR] Error checking ${animeDoc.title}:`, error);
       results.push({
-        anilistId: anime.anilistId,
-        title: anime.title,
+        anilistId: animeDoc.anilistId,
+        title: animeDoc.title,
         episodesFound: 0,
         episodesDownloaded: 0,
         errors: [error.message],

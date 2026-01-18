@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAnimeById } from "@/lib/anilistService";
 import path from "path";
 import { ARIA2_PATH, downloaderService } from "@/lib/downloader";
 import { connectDB } from "@/lib/db";
@@ -18,10 +19,18 @@ export async function GET(
     await connectDB();
 
     // 1. Try to find anime in database by folder name OR by title
-    let anime = await Anime.findOne({ localFolderName: decodedFolder });
-    if (!anime) {
+    let animeDoc = await Anime.findOne({ localFolderName: decodedFolder });
+    if (!animeDoc) {
       // Fallback: try to find by title (for newly tracked anime without folder)
-      anime = await Anime.findOne({ title: decodedFolder });
+      animeDoc = await Anime.findOne({ title: decodedFolder });
+    }
+
+    let anime = animeDoc;
+    if (animeDoc?.anilistId) {
+      // Use getAnimeById to ensure we have up-to-date metadata (like titleRomaji)
+      // This will trigger a refresh if the field is missing due to the recent update
+      const updated = await getAnimeById(animeDoc.anilistId, true);
+      if (updated) anime = updated;
     }
 
     // 2. Check if local folder exists (Asynchronous)
