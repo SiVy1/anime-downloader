@@ -4,32 +4,42 @@ import fs from "fs";
 import { ARIA2_PATH } from "@/lib/downloader";
 import ffmpeg from "fluent-ffmpeg";
 import { PassThrough } from "stream";
+import { sanitizeFolderName } from "@/lib/utils/filesystem";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ index: string; path: string[] }> },
 ) {
   const { index, path: pathSegments } = await params;
-  console.log("[SubExtract] Raw path segments:", pathSegments);
-
-  const filePath = pathSegments.map((p) => decodeURIComponent(p)).join("/");
-
-  console.log("[SubExtract] Decoded relative path:", filePath);
-
-  if (!ARIA2_PATH) {
-    console.error("[SubExtract] ARIA2_PATH not configured");
-    return NextResponse.json(
-      { error: "ARIA2_PATH not configured" },
-      { status: 500 },
-    );
+  if (!ARIA2_PATH || pathSegments.length < 2) {
+    console.error("[SubExtract] Invalid request or ARIA2_PATH missing");
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const fullPath = path.join(ARIA2_PATH, filePath);
-  console.log("[SubExtract] Full system path:", fullPath);
+  const folder = decodeURIComponent(pathSegments[0]);
+  const filename = decodeURIComponent(pathSegments.slice(1).join("/"));
+  const sanitizedFolder = sanitizeFolderName(folder);
+
+  let fullPath = path.join(ARIA2_PATH, sanitizedFolder, filename);
+
+  console.log("[SubExtract] Decoded folder:", folder);
+  console.log("[SubExtract] Sanitized folder:", sanitizedFolder);
+  console.log("[SubExtract] Decoded filename:", filename);
+  console.log("[SubExtract] Attempting extract:", fullPath);
 
   if (!fs.existsSync(fullPath)) {
-    console.error("[SubExtract] File does not exist:", fullPath);
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
+    // Fallback to unsanitized folder name
+    const unsanitizedPath = path.join(ARIA2_PATH, folder, filename);
+    console.log(
+      "[SubExtract] Sanitized path not found, trying unsanitized:",
+      unsanitizedPath,
+    );
+    if (fs.existsSync(unsanitizedPath)) {
+      fullPath = unsanitizedPath;
+    } else {
+      console.error("[SubExtract] File not found at any path");
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
+    }
   }
 
   const passThrough = new PassThrough();

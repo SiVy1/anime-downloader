@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { ARIA2_PATH } from "@/lib/downloader";
 import ffmpeg from "fluent-ffmpeg";
+import { sanitizeFolderName } from "@/lib/utils/filesystem";
 
 // Browser-supported codecs for direct playback
 const BROWSER_VIDEO_CODECS = new Set(["h264", "vp8", "vp9", "av1", "hevc"]);
@@ -14,26 +15,35 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const { path: pathSegments } = await params;
-  console.log("[SubMetadata] Raw path segments:", pathSegments);
-
-  const filePath = pathSegments.map((p) => decodeURIComponent(p)).join("/");
-  console.log("[SubMetadata] Decoded relative path:", filePath);
-
-  if (!ARIA2_PATH) {
-    console.error("[SubMetadata] ARIA2_PATH not configured");
-    return NextResponse.json(
-      { error: "ARIA2_PATH not configured" },
-      { status: 500 },
-    );
+  if (!ARIA2_PATH || pathSegments.length < 2) {
+    console.error("[SubMetadata] Invalid request or ARIA2_PATH missing");
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const fullPath = path.join(ARIA2_PATH, filePath);
-  console.log("[SubMetadata] Full system path:", fullPath);
+  const folder = decodeURIComponent(pathSegments[0]);
+  const filename = decodeURIComponent(pathSegments.slice(1).join("/"));
+  const sanitizedFolder = sanitizeFolderName(folder);
+
+  let fullPath = path.join(ARIA2_PATH, sanitizedFolder, filename);
+
+  console.log("[SubMetadata] Decoded folder:", folder);
+  console.log("[SubMetadata] Sanitized folder:", sanitizedFolder);
+  console.log("[SubMetadata] Decoded filename:", filename);
+  console.log("[SubMetadata] Attempting probe:", fullPath);
 
   if (!fs.existsSync(fullPath)) {
-    console.error("[SubMetadata] File does not exist:", fullPath);
-    console.error("[SubMetadata] ARIA2_PATH is:", ARIA2_PATH);
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
+    // Fallback to unsanitized folder name
+    const unsanitizedPath = path.join(ARIA2_PATH, folder, filename);
+    console.log(
+      "[SubMetadata] Sanitized path not found, trying unsanitized:",
+      unsanitizedPath,
+    );
+    if (fs.existsSync(unsanitizedPath)) {
+      fullPath = unsanitizedPath;
+    } else {
+      console.error("[SubMetadata] File not found at any path");
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
+    }
   }
 
   return new Promise<NextResponse>((resolve) => {
