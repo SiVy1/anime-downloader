@@ -46,7 +46,7 @@ export async function GET(
     let folderExists = fullPath && (await exists(fullPath));
 
     // Fallback to unsanitized path if sanitized fails (for migrations)
-    if (!folderExists && fullPath && ARI2_PATH) {
+    if (!folderExists && fullPath && ARIA2_PATH) {
       const unsanitizedPath = path.join(ARIA2_PATH, decodedFolder);
       if (await exists(unsanitizedPath)) {
         folderExists = true;
