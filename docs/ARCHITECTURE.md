@@ -33,6 +33,16 @@ The backend logic is organized into specialized services:
 - **`DownloaderService`**: Interfaces with qBittorrent and searches Nyaa.si.
 - **`AutoConverter`**: A background singleton that monitors and converts MKV files to MP4 using FFmpeg.
 - **`JikanService`**: Wrapper for the MyAnimeList API with Redis caching.
+- **`AniListService`**: Integration with AniList GraphQL API for anime metadata and sync. Implements write-through cache pattern with MongoDB and Redis.
+- **`AnimeSubtitleService`**: Extracts subtitles from MKV containers and searches OpenSubtitles.
+- **`PolishSubtitleService`**: Integration with animesub.info for Polish subtitles with release group matching.
+- **`NotificationService`**: Sends Discord webhook notifications for download events.
+- **`PVRService`**: Automated episode downloading with release profile support.
+- **`ReleaseProfileService`**: Torrent scoring and filtering based on quality and release groups.
+- **`EpisodeService`**: Episode tracking and watch status management.
+- **`ConversionService`**: Video format conversion and codec handling.
+- **`QueueService`**: Download queue management and prioritization.
+- **`CodecDetection`**: Media codec analysis using FFprobe.
 
 ## 📁 Project Structure
 
@@ -54,8 +64,57 @@ web/src/
 
 ## 🔄 Data Flow
 
-1. **Discovery**: User finds anime in `SeasonView` (via `useSeasonAnime`).
+1. **Discovery**: User finds anime in `SeasonView` (via `useSeasonAnime`) or syncs from AniList.
 2. **Library**: User "Tracks" anime, adding it to MongoDB via `LibraryService`.
 3. **Download**: User searches and starts torrents via `DownloaderService` (proxied through `useVideoPlayer` or `useAnimeDetails`).
 4. **Processing**: `AutoConverter` notices new files and prepares them for the web if needed.
 5. **Streaming**: `useVideoPlayer` determines the best streaming strategy (Direct vs. Transcode) and mounts the `VideoPlayer`.
+6. **Notifications**: `NotificationService` sends Discord alerts when episodes are ready.
+
+## 🌐 API Routes
+
+The application exposes a comprehensive REST API:
+
+### Anime Management
+- `GET/POST /api/anime/season` - Seasonal anime listing
+- `GET /api/anime/search` - Search anime
+- `GET /api/anime/[id]` - Get anime details
+- `POST /api/anime/[id]/add` - Add anime to library
+- `POST /api/anime/[id]/subscribe` - Subscribe for auto-downloads
+- `PUT /api/anime/[id]/release-profile` - Configure release preferences
+- `POST /api/anime/[id]/link` - Link local folder
+- `GET /api/anime/skip-times/[malId]/[episode]` - Get AniSkip data
+
+### Downloads & Library
+- `GET /api/downloader/search` - Search Nyaa.si
+- `GET /api/downloader/search-episode` - Search specific episode
+- `POST /api/downloader/download-magnet` - Start torrent
+- `GET /api/downloader/status/[gid]` - Download status
+- `GET /api/library` - List library folders
+- `GET /api/library/[folder]` - Get folder contents
+
+### Streaming & Media
+- `GET /api/stream/[...path]` - Stream with transcoding
+- `GET /api/stream-direct/[...path]` - Direct streaming
+- `POST /api/convert/[...path]` - Convert video format
+
+### Subtitles
+- `GET /api/subtitles/search` - Search OpenSubtitles
+- `GET /api/subtitles/anime/search` - Search with anime context
+- `GET /api/subtitles/polish/download` - Get Polish subtitles
+- `POST /api/subtitles/download` - Download subtitle
+- `GET /api/subtitles/extract/[index]/[...path]` - Extract from MKV
+- `GET /api/subtitles/metadata/[...path]` - Get subtitle metadata
+
+### Episodes & Settings
+- `POST /api/episodes/[id]/watch` - Mark episode watched
+- `GET /api/settings` - Get settings
+- `POST /api/settings` - Update settings
+- `GET/POST /api/settings/release-profile` - Global release profile
+
+### Integration & Automation
+- `POST /api/pvr/run` - Trigger PVR cycle
+- `POST /api/webhooks/qbittorrent` - Download completion webhook
+- `GET /api/anilist/planning` - Get AniList planning list
+- `POST /api/anilist/progress` - Update AniList progress
+- `GET /api/stats/summary` - Library statistics
