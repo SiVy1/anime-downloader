@@ -51,6 +51,7 @@ The application strictly validates environment variables at startup. If critical
 | :---------------------- | :----------------------------- | :----------------------------- |
 | `OPENSUBTITLES_API_KEY` | Your OpenSubtitles.com API key | Online subtitle search         |
 | `ANISKIP_CLIENT_ID`     | AniSkip Client ID              | Automatic intro/outro skipping |
+| `DISCORD_WEBHOOK_URL`   | Discord Webhook URL            | Download notifications         |
 
 ## 🏃 Running the App
 
@@ -76,3 +77,27 @@ To ensure everything is working correctly, run the test suite:
 ```bash
 npm run test
 ```
+
+## 🧩 Browser Extension
+
+The project includes a browser extension for one-click downloads from HiAnime.to and AniList.co.
+
+### Installation
+
+1. Navigate to the `extension/` directory
+2. Load as an unpacked extension in Chrome/Edge:
+   - Open `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked" and select the `extension/` folder
+
+### Usage
+
+When browsing HiAnime.to or AniList.co, the extension adds a download button to quickly send torrents to your qBittorrent instance.
+
+## 🔔 Discord Notifications
+
+To receive Discord notifications when episodes are downloaded:
+
+1. Create a Discord webhook in your server settings
+2. Add the webhook URL to `.env.local` as `DISCORD_WEBHOOK_URL`
+3. The system will automatically notify you when new episodes are ready

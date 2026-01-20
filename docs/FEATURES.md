@@ -5,6 +5,7 @@
 ## 🔍 Discovery & Tracking
 
 - **Seasonal View**: Browse currently airing anime fetched from Jikan (MAL).
+- **AniList Integration**: Sync your anime library with AniList. Track progress and update watching status.
 - **Smart Search**: Filter seasonal anime by title or genres.
 - **One-Click Tracking**: Instantly add upcoming series to your watched library.
 
@@ -25,6 +26,7 @@
 
 - **Internal Extraction**: Automatically extracts `.ass`/`.vtt` subtitles from MKV containers.
 - **Online Search**: Integrated search for external subtitles via OpenSubtitles.com.
+- **Polish Subtitles**: Dedicated integration with animesub.info for Polish anime subtitles.
 - **Automatic Matching**: Attempts to find the best matching subtitle based on release filename.
 
 ## 🔄 Library Automation
@@ -42,3 +44,9 @@
   - Excluded groups
 - **Global Defaults**: Set default preferences that apply to all new subscriptions.
 - **Cron-Based Scheduling**: Trigger the PVR cycle via Linux cron for reliable automatic downloads.
+
+## 🔔 Notifications & Integration
+
+- **Discord Webhooks**: Receive notifications in Discord when new episodes are downloaded.
+- **Browser Extension**: One-click download from HiAnime.to and AniList.co to your qBittorrent instance.
+- **Queue Management**: Smart download queue with prioritization and scheduling.
